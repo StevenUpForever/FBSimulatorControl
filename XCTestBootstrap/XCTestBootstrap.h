@@ -14,9 +14,9 @@
 #import <XCTestBootstrap/FBSimulatorTestPreparationStrategy.h>
 #import <XCTestBootstrap/FBTestBundle.h>
 #import <XCTestBootstrap/FBTestConfiguration.h>
-#import <XCTestBootstrap/FBTestLaunchConfiguration.h>
 #import <XCTestBootstrap/FBTestManager.h>
 #import <XCTestBootstrap/FBTestManagerAPIMediator.h>
+#import <XCTestBootstrap/FBTestManagerJUnitGenerator.h>
 #import <XCTestBootstrap/FBTestManagerProcessInteractionDelegate.h>
 #import <XCTestBootstrap/FBTestManagerResult.h>
 #import <XCTestBootstrap/FBTestManagerResultSummary.h>

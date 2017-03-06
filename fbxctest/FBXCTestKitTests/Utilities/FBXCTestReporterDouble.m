@@ -11,10 +11,10 @@
 
 @interface FBXCTestReporterDouble ()
 
-@property (nonatomic, strong, readonly) NSMutableArray<NSArray<NSString *> *> *mutableStartedTestCases;
-@property (nonatomic, strong, readonly) NSMutableArray<NSArray<NSString *> *> *mutablePassedTests;
-@property (nonatomic, strong, readonly) NSMutableArray<NSArray<NSString *> *> *mutableFailedTests;
-@property (nonatomic, strong, readonly) NSMutableArray<NSDictionary *> *mutableExternalEvents;
+@property (nonatomic, copy, readonly) NSMutableArray<NSArray<NSString *> *> *mutableStartedTestCases;
+@property (nonatomic, copy, readonly) NSMutableArray<NSArray<NSString *> *> *mutablePassedTests;
+@property (nonatomic, copy, readonly) NSMutableArray<NSArray<NSString *> *> *mutableFailedTests;
+@property (nonatomic, copy, readonly) NSMutableArray<NSDictionary *> *mutableExternalEvents;
 @property (nonatomic, assign, readwrite) BOOL printReportWasCalled;
 
 @end
@@ -100,6 +100,16 @@
 }
 
 - (void)testHadOutput:(NSString *)output
+{
+
+}
+
+- (void)processWaitingForDebuggerWithProcessIdentifier:(pid_t)pid
+{
+
+}
+
+- (void)debuggerAttached
 {
 
 }

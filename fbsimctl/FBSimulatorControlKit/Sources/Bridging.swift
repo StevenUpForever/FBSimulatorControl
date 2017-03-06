@@ -16,18 +16,6 @@ extension FBSimulatorState {
   }}
 }
 
-class Interaction : NSObject, FBInteractionProtocol {
-  let interaction:(Void)throws -> Void
-
-  init(_ interaction: @escaping (Void) throws -> Void) {
-    self.interaction = interaction
-  }
-
-  func perform() throws {
-    return try self.interaction()
-  }
-}
-
 extension FBiOSTargetQuery {
   static func parseUDIDToken(_ token: String) throws -> String {
     if let _ = UUID(uuidString: token) {
@@ -111,6 +99,7 @@ extension FBiOSTargetQuery : Accumulator {
     return self
       .udids(Array(other.udids))
       .states(other.states)
+      .architectures(Array(other.architectures))
       .targetType(targetType)
       .devices(deviceArray)
       .osVersions(osVersionsArray)
@@ -118,16 +107,29 @@ extension FBiOSTargetQuery : Accumulator {
   }
 }
 
-extension FBiOSTargetFormat {
-  public static var allFields: [String] { get {
+extension FBiOSTargetFormatKey {
+  public static var allFields: [FBiOSTargetFormatKey] { get {
     return [
-      FBiOSTargetFormatUDID,
-      FBiOSTargetFormatName,
-      FBiOSTargetFormatDeviceName,
-      FBiOSTargetFormatOSVersion,
-      FBiOSTargetFormatState,
-      FBiOSTargetFormatProcessIdentifier,
-      FBiOSTargetFormatContainerApplicationProcessIdentifier,
+      FBiOSTargetFormatKey.UDID,
+      FBiOSTargetFormatKey.name,
+      FBiOSTargetFormatKey.deviceName,
+      FBiOSTargetFormatKey.osVersion,
+      FBiOSTargetFormatKey.state,
+      FBiOSTargetFormatKey.architecture,
+      FBiOSTargetFormatKey.processIdentifier,
+      FBiOSTargetFormatKey.containerApplicationProcessIdentifier,
+    ]
+  }}
+}
+
+extension FBArchitecture {
+  public static var allFields: [FBArchitecture] { get {
+    return [
+      .I386,
+      .X86_64,
+      .armv7,
+      .armv7s,
+      .arm64,
     ]
   }}
 }
@@ -182,4 +184,45 @@ extension IndividualCreationConfiguration {
     }
     return configuration
   }}
+}
+
+extension FBApplicationDescriptor {
+  static func findOrExtract(atPath: String) throws -> (String, URL?) {
+    var url: NSURL? = nil
+    let result = try FBApplicationDescriptor.findOrExtractApplication(atPath: atPath, extractPathOut: &url)
+    return (result, url as URL?)
+  }
+}
+
+extension Bool {
+  static func fallback(from: String?, to: Bool) -> Bool {
+    guard let from = from else {
+      return false
+    }
+    switch from.lowercased() {
+    case "1", "true": return true
+    case "0", "false": return false
+    default: return false
+    }
+  }
+}
+
+extension HttpRequest {
+  func getBoolQueryParam(_ key: String, _ fallback: Bool) -> Bool {
+    return Bool.fallback(from: self.query[key], to: fallback)
+  }
+}
+
+struct LineBufferDataIterator : IteratorProtocol {
+  let lineBuffer: FBLineBuffer
+
+  mutating func next() -> Data? {
+    return self.lineBuffer.consumeLineData()
+  }
+}
+
+extension FBLineBuffer {
+  func dataIterator() -> LineBufferDataIterator {
+    return LineBufferDataIterator(lineBuffer: self)
+  }
 }

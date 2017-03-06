@@ -8,6 +8,7 @@
  */
 
 #import <Foundation/Foundation.h>
+#import <Metal/Metal.h>
 
 #import <FBSimulatorControl/FBSimulatorControl.h>
 
@@ -23,6 +24,10 @@
 
 - (void)testRecordsVideoForSimulatorApp
 {
+  if (!MTLCreateSystemDefaultDevice()) {
+    NSLog(@"Skipping running -[%@ %@] since Metal is not supported on this Hardware", NSStringFromClass(self.class), NSStringFromSelector(_cmd));
+    return;
+  }
   FBSimulatorBootConfiguration *launchConfiguration = self.simulatorLaunchConfiguration;
   if (launchConfiguration.shouldUseDirectLaunch) {
     NSLog(@"Skipping running -[%@ %@] since the Simulator will be launched directly", NSStringFromClass(self.class), NSStringFromSelector(_cmd));
@@ -35,7 +40,10 @@
 
   FBSimulator *simulator = [self assertObtainsBootedSimulatorWithConfiguration:self.simulatorConfiguration launchConfiguration:launchConfiguration];
   [self assertSimulator:simulator launchesApplication:self.safariApplication withApplicationLaunchConfiguration:self.safariAppLaunch];
-  [self assertInteractionSuccessful:[simulator.interact startRecordingVideo]];
+  NSError *error = nil;
+  BOOL success = [simulator startRecordingToFile:nil error:&error];
+  XCTAssertNil(error);
+  XCTAssertTrue(success);
   [self assertSimulator:simulator launchesApplication:self.tableSearchApplication withApplicationLaunchConfiguration:self.tableSearchAppLaunch];
 }
 

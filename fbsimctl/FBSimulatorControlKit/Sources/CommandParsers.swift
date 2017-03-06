@@ -241,9 +241,11 @@ extension IndividualCreationConfiguration : Parsable {
 
   static var deviceParser: Parser<FBControlCoreConfiguration_Device> {
     let desc = PrimitiveDesc(name: "device-name", desc: "Device Name.")
+
     return Parser.single(desc) { token in
-      let nameToDevice = FBControlCoreConfigurationVariants.nameToDevice()
-      guard let device = nameToDevice[token] else {
+      let nameToDevice = FBControlCoreConfigurationVariants.nameToDevice
+      let deviceName = FBDeviceName(rawValue: token)
+      guard let device = nameToDevice[deviceName] else {
         throw ParseError.custom("\(token) is not a valid device name")
       }
       return device
@@ -263,8 +265,9 @@ extension IndividualCreationConfiguration : Parsable {
   static var osVersionParser: Parser<FBControlCoreConfiguration_OS> {
     let desc = PrimitiveDesc(name: "os-version", desc: "OS Version.")
     return Parser.single(desc) { token in
-      let nameToOSVersion = FBControlCoreConfigurationVariants.nameToOSVersion()
-      guard let osVersion = nameToOSVersion[token] else {
+      let nameToOSVersion = FBControlCoreConfigurationVariants.nameToOSVersion
+      let osVersionName = FBOSVersionName(rawValue: token)
+      guard let osVersion = nameToOSVersion[osVersionName] else {
         throw ParseError.custom("\(token) is not a valid device name")
       }
       return osVersion
@@ -406,35 +409,61 @@ extension Command : Parsable {
   }
 }
 
-extension Server : Parsable {
-  public static var parser: Parser<Server> {
-    return Parser
-      .alternative([
+extension ListenInterface : Parsable {
+  public static var parser: Parser<ListenInterface> {
+    return Parser<ListenInterface>
+      .accumulate(0, [
         self.httpParser,
         self.stdinParser,
+        self.hidParser,
       ])
-      .fallback(Server.empty)
   }
 
-  static var stdinParser: Parser<Server> {
-    return Parser<Server>
-      .ofFlag("stdin", Server.stdin, "Listen for commands on stdin")
+  static var stdinParser: Parser<ListenInterface> {
+    return Parser<ListenInterface>
+      .ofFlag("stdin", ListenInterface(stdin: true, http: nil, hid: nil), "Listen for commands on stdin")
   }
 
-  static var httpParser:  Parser<Server> {
-    return Parser<Server>
-      .ofFlagWithArg("http", portParser, "")
-      .fmap(Server.http)
+  static var httpParser:  Parser<ListenInterface> {
+    return Parser<ListenInterface>
+      .ofFlagWithArg("http", portParser, "The HTTP Port to listen on")
+      .fmap { ListenInterface(stdin: false, http: $0, hid: nil) }
+  }
+
+  static var hidParser: Parser<ListenInterface> {
+    return Parser<ListenInterface>
+      .ofFlagWithArg("hid", portParser, "The HID Port to listen on")
+      .fmap { ListenInterface(stdin: false, http: nil, hid: $0) }
   }
 
   private static var portParser: Parser<UInt16> {
     return Parser<Int>.ofInt
       .fmap { UInt16($0) }
-      .describe(PrimitiveDesc(name: "port",
-                              desc: "Port number (16-bit unsigned integer)."))
+      .describe(PrimitiveDesc(
+        name: "port",
+        desc: "Port number (16-bit unsigned integer).")
+    )
   }
 }
 
+extension Record : Parsable {
+  public static var parser: Parser<Record> {
+    return Parser.alternative([
+      self.startParser,
+      self.stopParser
+    ])
+  }
+
+  private static var startParser: Parser<Record> {
+    return Parser
+      .ofCommandWithArg("start", Parser<String>.ofAny.optional())
+      .fmap { Record.start($0) }
+  }
+
+  private static var stopParser: Parser<Record> {
+    return Parser.ofString("stop", Record.stop)
+  }
+}
 
 extension Action : Parsable {
   public static var parser: Parser<Action> {
@@ -587,8 +616,8 @@ extension Action : Parsable {
   }
 
   static var listenParser: Parser<Action> {
-    return Parser<Server>
-      .ofCommandWithArg(EventName.Listen.rawValue, Server.parser)
+    return Parser<ListenInterface>
+      .ofCommandWithArg(EventName.Listen.rawValue, ListenInterface.parser)
       .fmap { Action.listen($0) }
       .sectionize("listen", "Action: Listen", "")
   }
@@ -617,7 +646,7 @@ extension Action : Parsable {
   static var installParser: Parser<Action> {
     return Parser<String>
       .ofCommandWithArg(EventName.Install.rawValue, Parser<String>.ofAny)
-      .fmap { Action.install($0) }
+      .fmap { Action.install($0, false) }
   }
 
   static var keyboardOverrideParser: Parser<Action> {
@@ -633,13 +662,8 @@ extension Action : Parsable {
   }
 
   static var recordParser: Parser<Action> {
-    let startStopParser: Parser<Bool> = Parser.alternative([
-      Parser.ofString("start", true),
-      Parser.ofString("stop", false)
-    ])
-
-    return Parser<Bool>
-      .ofCommandWithArg(EventName.Record.rawValue, startStopParser)
+    return Parser<Record>
+      .ofCommandWithArg(EventName.Record.rawValue, Record.parser)
       .fmap { Action.record($0) }
   }
 
@@ -747,8 +771,8 @@ extension DiagnosticFormat : Parsable {
 
 public struct FBiOSTargetFormatParsers {
   public static var parser: Parser<FBiOSTargetFormat> {
-    let parsers = FBiOSTargetFormat.allFields.map { field in
-      return Parser.ofString("--" + field, field)
+    let parsers = FBiOSTargetFormatKey.allFields.map { field in
+      return Parser.ofString("--" + field.rawValue, field)
     }
 
     let altParser = Parser
@@ -785,6 +809,7 @@ public struct FBiOSTargetQueryParsers {
       self.firstParser,
       self.uuidParser,
       self.simulatorStateParser,
+      self.architectureParser,
       self.targetTypeParser,
       self.osVersionsParser,
       self.deviceParser
@@ -802,6 +827,17 @@ public struct FBiOSTargetQueryParsers {
     return Parser<FBiOSTargetQuery>
       .ofUDID
       .fmap { FBiOSTargetQuery.udids([$0]) }
+  }
+
+  static var architectureParser: Parser<FBiOSTargetQuery> {
+    return Parser<FBArchitecture>
+      .alternative(FBArchitecture.allFields.map(architectureSubparser))
+      .fmap { FBiOSTargetQuery.architectures([$0]) }
+  }
+
+  static func architectureSubparser(_ architecture: FBArchitecture) -> Parser<FBArchitecture> {
+    return Parser<FBArchitecture>
+      .ofFlag("arch=\(architecture.rawValue)", architecture, "")
   }
 
   static var simulatorStateParser: Parser<FBiOSTargetQuery> {
@@ -909,7 +945,7 @@ struct FBSimulatorBootConfigurationParser {
   }
 
   static var scaleParser: Parser<FBSimulatorScale> {
-    return Parser.alternative([
+    let subparsers: [Parser<FBSimulatorScale>] = [
       Parser<FBSimulatorScale>
         .ofFlag("scale=25", FBSimulatorScale_25(), ""),
       Parser<FBSimulatorScale>
@@ -918,7 +954,9 @@ struct FBSimulatorBootConfigurationParser {
         .ofFlag("scale=75", FBSimulatorScale_75(), ""),
       Parser<FBSimulatorScale>
         .ofFlag("scale=100", FBSimulatorScale_100(), "")
-    ])
+    ]
+
+    return Parser.alternative(subparsers)
   }
 
   static var optionsParser: Parser<FBSimulatorBootOptions> {
@@ -949,7 +987,13 @@ struct FBProcessLaunchConfigurationParsers {
       .fmap { (output, bundleIDOrApplicationDescriptor, arguments) in
         let (bundleId, appDescriptor) = bundleIDOrApplicationDescriptor
         return (
-          FBApplicationLaunchConfiguration(bundleID: bundleId, bundleName: nil, arguments: arguments, environment : [:], output: output),
+          FBApplicationLaunchConfiguration(
+            bundleID: bundleId,
+            bundleName: nil,
+            arguments: arguments,
+            environment: [:],
+            waitForDebugger: false,
+            output: output),
           appDescriptor
         )
       }

@@ -21,12 +21,12 @@ public struct Configuration {
 }
 
 /**
- Options for Creating a Server for listening to commands on.
+ Options for Listening on an Interface.
  */
-public enum Server {
-  case empty
-  case stdin
-  case http(in_port_t)
+public struct ListenInterface {
+  let stdin: Bool
+  let http: in_port_t?
+  let hid: in_port_t?
 }
 
 /**
@@ -56,6 +56,14 @@ public enum DiagnosticFormat : String {
 }
 
 /**
+ An Enumeration for controlling recording.
+ */
+public enum Record {
+  case start(String?)
+  case stop
+}
+
+/**
  An Interaction represents a Single, synchronous interaction with a Simulator.
  */
 public enum Action {
@@ -67,7 +75,8 @@ public enum Action {
   case delete
   case diagnose(FBDiagnosticQuery, DiagnosticFormat)
   case erase
-  case install(String)
+  case hid(FBSimulatorHIDEvent)
+  case install(String, Bool)
   case keyboardOverride
   case launchAgent(FBAgentLaunchConfiguration)
   case launchApp(FBApplicationLaunchConfiguration)
@@ -75,9 +84,9 @@ public enum Action {
   case list
   case listApps
   case listDeviceSets
-  case listen(Server)
+  case listen(ListenInterface)
   case open(URL)
-  case record(Bool)
+  case record(Record)
   case relaunch(FBApplicationLaunchConfiguration)
   case search(FBBatchLogSearch)
   case serviceInfo(String)
@@ -145,6 +154,68 @@ extension Configuration : Accumulator {
   }
 }
 
+extension ListenInterface : Equatable {}
+public func == (left: ListenInterface, right: ListenInterface) -> Bool {
+  return left.stdin == right.stdin && left.http == right.http && left.hid == right.hid
+}
+
+extension ListenInterface : Accumulator {
+  public init() {
+    self.stdin = false
+    self.http = nil
+    self.hid = nil
+  }
+
+  public static var identity: ListenInterface { get {
+    return ListenInterface()
+  }}
+
+  public func append(_ other: ListenInterface) -> ListenInterface {
+    return ListenInterface(
+      stdin: other.stdin ? other.stdin : self.stdin,
+      http: other.http ?? self.http,
+      hid: other.hid ?? self.hid
+    )
+  }
+}
+
+extension ListenInterface : EventReporterSubject {
+  public var jsonDescription: JSON { get {
+    var httpValue = JSON.null
+    if let portNumber = self.http {
+      httpValue = JSON.number(NSNumber(integerLiteral: Int(portNumber)))
+    }
+    var hidValue = JSON.null
+    if let portNumber = self.hid {
+      hidValue = JSON.number(NSNumber(integerLiteral: Int(portNumber)))
+    }
+
+    return JSON.dictionary([
+      "stdin" : JSON.bool(self.stdin),
+      "http" : httpValue,
+      "hid" : hidValue
+    ])
+  }}
+
+  public var description: String { get {
+    var description = "Http: "
+    if let httpPort = self.http {
+      description += httpPort.description
+    } else {
+      description += "No"
+    }
+    description += " Hid: "
+    if let hidPort = self.hid {
+      description += hidPort.description
+    } else {
+      description += "No"
+    }
+    description += " stdin: \(self.stdin)"
+    return description
+  }}
+}
+
+
 extension IndividualCreationConfiguration : Equatable {}
 public func == (left: IndividualCreationConfiguration, right: IndividualCreationConfiguration) -> Bool {
   return left.osVersion?.name == right.osVersion?.name &&
@@ -180,6 +251,18 @@ public func == (left: CreationSpecification, right: CreationSpecification) -> Bo
   }
 }
 
+extension Record : Equatable {}
+public func == (left: Record, right: Record) -> Bool {
+  switch (left, right) {
+  case (.start(let leftPath), .start(let rightPath)):
+    return leftPath == rightPath
+  case (.stop, .stop):
+    return true
+  default:
+    return false
+  }
+}
+
 extension Action : Equatable { }
 public func == (left: Action, right: Action) -> Bool {
   switch (left, right) {
@@ -199,8 +282,10 @@ public func == (left: Action, right: Action) -> Bool {
     return leftQuery == rightQuery && leftFormat == rightFormat
   case (.erase, .erase):
     return true
-  case (.install(let leftApp), .install(let rightApp)):
-    return leftApp == rightApp
+  case (.hid(let leftEvent), .hid(let rightEvent)):
+    return leftEvent == rightEvent
+  case (.install(let leftApp, let leftSign), .install(let rightApp, let rightSign)):
+    return leftApp == rightApp && leftSign == rightSign
   case (.keyboardOverride, .keyboardOverride):
     return true
   case (.launchAgent(let leftLaunch), .launchAgent(let rightLaunch)):
@@ -265,6 +350,8 @@ extension Action {
       return (EventName.Diagnose, ControlCoreSubject(query))
     case .erase:
       return (EventName.Erase, nil)
+    case .hid(let event):
+      return (EventName.Hid, ControlCoreSubject(event))
     case .install:
       return (EventName.Install, nil)
     case .keyboardOverride:
@@ -285,8 +372,8 @@ extension Action {
       return (EventName.Listen, nil)
     case .open(let url):
       return (EventName.Open, url.absoluteString)
-    case .record(let start):
-      return (EventName.Record, start)
+    case .record(let record):
+      return (EventName.Record, record)
     case .relaunch(let appLaunch):
       return (EventName.Relaunch, ControlCoreSubject(appLaunch))
     case .search(let search):
@@ -307,48 +394,6 @@ extension Action {
       return (EventName.Diagnose, nil)
     case .watchdogOverride(let bundleIDs, _):
       return (EventName.WatchdogOverride, StringsSubject(bundleIDs))
-    }
-  }}
-}
-
-extension Server : Equatable { }
-public func == (left: Server, right: Server) -> Bool {
-  switch (left, right) {
-  case (.empty, .empty):
-    return true
-  case (.stdin, .stdin):
-    return true
-  case (.http(let leftPort), .http(let rightPort)):
-    return leftPort == rightPort
-  default:
-    return false
-  }
-}
-
-extension Server : EventReporterSubject {
-  public var jsonDescription: JSON { get {
-    switch self {
-    case .empty:
-      return JSON.jDictionary([
-        "type" : JSON.jString("empty")
-      ])
-    case .stdin:
-      return JSON.jDictionary([
-        "type" : JSON.jString("stdin")
-      ])
-    case .http(let port):
-      return JSON.jDictionary([
-        "type" : JSON.jString("http"),
-        "port" : JSON.jNumber(NSNumber(value: Int32(port) as Int32))
-      ])
-    }
-  }}
-
-  public var description: String { get {
-    switch self {
-    case .empty: return "empty"
-    case .stdin: return "stdin"
-    case .http(let port): return "HTTP: Port \(port)"
     }
   }}
 }

@@ -28,6 +28,7 @@
 #import "FBSimulatorDiagnostics.h"
 #import "FBSimulatorHistory+Queries.h"
 #import "FBSimulatorProcessFetcher.h"
+#import "FBSimulatorSubprocessTerminationStrategy.h"
 #import "FBProcessLaunchConfiguration+Simulator.h"
 
 @interface FBApplicationLaunchStrategy ()
@@ -46,15 +47,15 @@
 
 @implementation FBApplicationLaunchStrategy
 
-+ (instancetype)withSimulator:(FBSimulator *)simulator useBridge:(BOOL)useBridge;
++ (instancetype)strategyWithSimulator:(FBSimulator *)simulator useBridge:(BOOL)useBridge;
 {
   Class strategyClass = useBridge ? FBApplicationLaunchStrategy_CoreSimulator.class : FBApplicationLaunchStrategy_CoreSimulator.class;
   return [[strategyClass alloc] initWithSimulator:simulator];
 }
 
-+ (instancetype)withSimulator:(FBSimulator *)simulator
++ (instancetype)strategyWithSimulator:(FBSimulator *)simulator
 {
-  return [self withSimulator:simulator useBridge:NO];
+  return [self strategyWithSimulator:simulator useBridge:NO];
 }
 
 - (instancetype)initWithSimulator:(FBSimulator *)simulator
@@ -144,6 +145,110 @@
   return 0;
 }
 
+- (BOOL)uninstallApplication:(NSString *)bundleID error:(NSError **)error
+{
+  // Confirm the app is suitable to be uninstalled.
+  FBSimulator *simulator = self.simulator;
+  if ([simulator isSystemApplicationWithBundleID:bundleID error:nil]) {
+    return [[[FBSimulatorError
+      describeFormat:@"Can't uninstall '%@' as it is a system Application", bundleID]
+      inSimulator:simulator]
+      failBool:error];
+  }
+  NSError *innerError = nil;
+  if (![simulator installedApplicationWithBundleID:bundleID error:&innerError]) {
+    return [[[[FBSimulatorError
+      describeFormat:@"Can't uninstall '%@' as it isn't installed", bundleID]
+      causedBy:innerError]
+      inSimulator:simulator]
+      failBool:error];
+  }
+  // Kill the app if it's running
+  [simulator killApplicationWithBundleID:bundleID error:nil];
+  // Then uninstall for real.
+  if (![simulator.device uninstallApplication:bundleID withOptions:nil error:&innerError]) {
+    return [[[[FBSimulatorError
+      describeFormat:@"Failed to uninstall '%@'", bundleID]
+      causedBy:innerError]
+      inSimulator:simulator]
+      failBool:error];
+  }
+  return YES;
+}
+
+- (BOOL)launchOrRelaunchApplication:(FBApplicationLaunchConfiguration *)appLaunch error:(NSError **)error
+{
+  NSParameterAssert(appLaunch);
+
+  // Kill the Application if it exists. Don't bother killing the process if it doesn't exist
+  FBSimulator *simulator = self.simulator;
+  NSError *innerError = nil;
+  FBProcessInfo *process = [simulator runningApplicationWithBundleID:appLaunch.bundleID error:&innerError];
+  if (process) {
+    if (![[FBSimulatorSubprocessTerminationStrategy strategyWithSimulator:simulator] terminate:process error:error]) {
+      return [FBSimulatorError failBoolWithError:innerError errorOut:error];
+    }
+  }
+
+  // Perform the launch usin the launch config
+  if (![self launchApplication:appLaunch error:&innerError]) {
+    return [[[[FBSimulatorError
+      describeFormat:@"Failed to re-launch %@", appLaunch]
+      inSimulator:simulator]
+      causedBy:innerError]
+      failBool:error];
+  }
+  return YES;
+}
+
+- (BOOL)relaunchLastLaunchedApplicationWithError:(NSError **)error
+{
+  // Obtain Application Launch info for the last launch.
+  FBSimulator *simulator = self.simulator;
+  FBProcessInfo *process = simulator.history.lastLaunchedApplicationProcess;
+  if (!process) {
+    return [[[FBSimulatorError
+      describe:@"Cannot re-launch an find the last-launched process"]
+      inSimulator:simulator]
+      failBool:error];
+  }
+
+  // Obtain the Launch Config for the process.
+  FBApplicationLaunchConfiguration *launchConfig = (FBApplicationLaunchConfiguration *) simulator.history.processLaunchConfigurations[process];
+  if (!process) {
+    return [[[FBSimulatorError
+      describe:@"Cannot re-launch an Application until one has been launched; there's no prior process launch config"]
+      inSimulator:self.simulator]
+      failBool:error];
+  }
+
+  return [self launchOrRelaunchApplication:launchConfig error:error];
+}
+
+- (BOOL)terminateLastLaunchedApplicationWithError:(NSError **)error
+{
+  // Obtain Application Launch info for the last launch.
+  FBSimulator *simulator = self.simulator;
+  FBProcessInfo *process = simulator.history.lastLaunchedApplicationProcess;
+  if (!process) {
+    return [[[FBSimulatorError
+      describe:@"Cannot re-launch an find the last-launched process"]
+      inSimulator:simulator]
+      failBool:error];
+  }
+
+  // Kill the Application Process
+  NSError *innerError = nil;
+  if (![[FBSimulatorSubprocessTerminationStrategy strategyWithSimulator:simulator] terminate:process error:error]) {
+    return [[[[FBSimulatorError
+      describeFormat:@"Failed to terminate app %@", process.shortDescription]
+      causedBy:innerError]
+      inSimulator:simulator]
+      failBool:error];
+  }
+  return YES;
+}
+
 @end
 
 @implementation FBApplicationLaunchStrategy_Bridge
@@ -177,8 +282,27 @@
 - (pid_t)launchApplication:(FBApplicationLaunchConfiguration *)appLaunch stdOutPath:(NSString *)stdOutPath stdErrPath:(NSString *)stdErrPath error:(NSError **)error
 {
   FBSimulator *simulator = self.simulator;
-  NSDictionary<NSString *, id> *options = [appLaunch simDeviceLaunchOptionsWithStdOutPath:stdOutPath stdErrPath:stdErrPath];
+  NSDictionary<NSString *, id> *options = [appLaunch
+    simDeviceLaunchOptionsWithStdOutPath:[self translateAbsolutePath:stdOutPath toPathRelativeTo:simulator.dataDirectory]
+    stdErrPath:[self translateAbsolutePath:stdErrPath toPathRelativeTo:simulator.dataDirectory]
+    waitForDebugger:appLaunch.waitForDebugger];
   return [simulator.device launchApplicationWithID:appLaunch.bundleID options:options error:error];
+}
+
+- (NSString *)translateAbsolutePath:(NSString *)absolutePath toPathRelativeTo:(NSString *)referencePath
+{
+  if (![absolutePath hasPrefix:@"/"]) {
+    return absolutePath;
+  }
+  // When launching an application with a custom stdout/stderr path, `SimDevice` uses the given path relative
+  // to the Simulator's data directory. From the Framework's consumer point of view this might not be the
+  // wanted behaviour. To work around it, we construct a path relative to the Simulator's data directory
+  // using `..` until we end up in the absolute path outside the Simulator's data directory.
+  NSString *translatedPath = @"";
+  for (NSUInteger index = 0; index < referencePath.pathComponents.count; index++) {
+    translatedPath = [translatedPath stringByAppendingPathComponent:@".."];
+  }
+  return [translatedPath stringByAppendingPathComponent:absolutePath];
 }
 
 @end
