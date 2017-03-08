@@ -10,6 +10,7 @@
 #import <Foundation/Foundation.h>
 
 #import <FBSimulatorControl/FBFramebufferFrameSink.h>
+#import <FBSimulatorControl/FBFramebufferRenderable.h>
 
 @class FBDiagnostic;
 @class FBFramebufferRenderable;
@@ -58,11 +59,11 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  Creates a new FBFramebufferImage instance.
 
- @param diagnostic the Diagnostic to base image reporting off.
+ @param filePath the File Path to write to.
  @param eventSink the Event Sink to report Image Logs to.
  @return a new FBFramebufferImage instance.
  */
-+ (instancetype)withDiagnostic:(FBDiagnostic *)diagnostic eventSink:(id<FBSimulatorEventSink>)eventSink;
++ (instancetype)imageWithFilePath:(NSString *)filePath eventSink:(id<FBSimulatorEventSink>)eventSink;
 
 @end
 
@@ -74,12 +75,12 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  Creates a new FBFramebufferImage instance.
 
- @param diagnostic the Diagnostic to base image reporting off.
+ @param filePath the File Path to write to.
  @param renderable the renderable to obtain frames from.
  @param eventSink the Event Sink to report Image Logs to.
  @return a new FBFramebufferImage instance.
  */
-+ (instancetype)withDiagnostic:(FBDiagnostic *)diagnostic renderable:(FBFramebufferRenderable *)renderable eventSink:(id<FBSimulatorEventSink>)eventSink;
++ (instancetype)imageWithFilePath:(NSString *)filePath renderable:(FBFramebufferRenderable *)renderable eventSink:(id<FBSimulatorEventSink>)eventSink;
 
 @end
 

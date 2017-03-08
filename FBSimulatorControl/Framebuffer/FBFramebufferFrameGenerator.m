@@ -18,7 +18,6 @@
 
 #import "FBFramebufferFrame.h"
 #import "FBFramebufferFrameSink.h"
-#import "FBFramebufferSurfaceClient.h"
 #import "FBSurfaceImageGenerator.h"
 
 static const NSInteger FBFramebufferLogFrameFrequency = 100;
@@ -29,7 +28,6 @@ static const uint64_t FBSimulatorFramebufferFrameTimeInterval = NSEC_PER_MSEC * 
 
 @interface FBFramebufferFrameGenerator ()
 
-@property (nonatomic, weak, readonly) FBFramebuffer *framebuffer;
 @property (nonatomic, copy, readonly) NSDecimalNumber *scale;
 @property (nonatomic, strong, readonly) dispatch_queue_t queue;
 @property (nonatomic, strong, readonly) id<FBControlCoreLogger> logger;
@@ -44,19 +42,18 @@ static const uint64_t FBSimulatorFramebufferFrameTimeInterval = NSEC_PER_MSEC * 
 
 #pragma mark Initializers
 
-+ (instancetype)generatorWithFramebuffer:(FBFramebuffer *)framebuffer scale:(NSDecimalNumber *)scale sink:(id<FBFramebufferFrameSink>)sink queue:(dispatch_queue_t)queue logger:(id<FBControlCoreLogger>)logger;
++ (instancetype)generatorWithScale:(NSDecimalNumber *)scale sink:(id<FBFramebufferFrameSink>)sink queue:(dispatch_queue_t)queue logger:(id<FBControlCoreLogger>)logger
 {
-  return [[self alloc] initWithFramebuffer:framebuffer scale:scale sink:sink queue:queue logger:logger];
+  return [[self alloc] initWithScale:scale sink:sink queue:queue logger:logger];
 }
 
-- (instancetype)initWithFramebuffer:(FBFramebuffer *)framebuffer scale:(NSDecimalNumber *)scale sink:(id<FBFramebufferFrameSink>)sink queue:(dispatch_queue_t)queue logger:(id<FBControlCoreLogger>)logger
+- (instancetype)initWithScale:(NSDecimalNumber *)scale sink:(id<FBFramebufferFrameSink>)sink queue:(dispatch_queue_t)queue logger:(id<FBControlCoreLogger>)logger
 {
   self = [super init];
   if (!self) {
     return nil;
   }
 
-  _framebuffer = framebuffer;
   _scale = scale;
   _sink = sink;
   _queue = queue;
@@ -90,13 +87,14 @@ static const uint64_t FBSimulatorFramebufferFrameTimeInterval = NSEC_PER_MSEC * 
 
 #pragma mark Public Methods
 
-- (void)frameSteamEnded
+- (void)frameSteamEndedWithTeardownGroup:(dispatch_group_t)group error:(NSError *)error
 {
-  dispatch_async(self.queue, ^{
+  dispatch_group_async(group, self.queue, ^{
     if (self.timebase) {
       CFRelease(self.timebase);
       self.timebase = nil;
     }
+    [self frameSteamEndedWithTeardownGroup:group error:error];
   });
 }
 
@@ -124,7 +122,7 @@ static const uint64_t FBSimulatorFramebufferFrameTimeInterval = NSEC_PER_MSEC * 
 
   // Create the Frame and pass it to the sink
   FBFramebufferFrame *frame = [self frameFromCurrentTime:image size:size];
-  [self.sink framebuffer:self.framebuffer didUpdate:frame];
+  [self.sink frameGenerator:self didUpdate:frame];
 
   // Log and increment.
   if (self.frameCount == 0) {
@@ -181,9 +179,9 @@ static const uint64_t FBSimulatorFramebufferFrameTimeInterval = NSEC_PER_MSEC * 
 
 #pragma mark Lifecycle
 
-- (instancetype)initWithFramebuffer:(FBFramebuffer *)framebuffer scale:(NSDecimalNumber *)scale sink:(id<FBFramebufferFrameSink>)sink queue:(dispatch_queue_t)queue logger:(id<FBControlCoreLogger>)logger
+- (instancetype)initWithScale:(NSDecimalNumber *)scale sink:(id<FBFramebufferFrameSink>)sink queue:(dispatch_queue_t)queue logger:(id<FBControlCoreLogger>)logger
 {
-  self = [super initWithFramebuffer:framebuffer scale:scale sink:sink queue:queue logger:logger];
+  self = [super initWithScale:scale sink:sink queue:queue logger:logger];
   if (!self) {
     return nil;
   }
@@ -201,11 +199,11 @@ static const uint64_t FBSimulatorFramebufferFrameTimeInterval = NSEC_PER_MSEC * 
   return self;
 }
 
-#pragma mark Public
+#pragma mark FBFramebufferRenderableConsumer
 
-- (void)currentSurfaceChanged:(nullable IOSurfaceRef)surface
+- (void)didChangeIOSurface:(nullable IOSurfaceRef)surface
 {
-  [self.imageGenerator currentSurfaceChanged:surface];
+  [self.imageGenerator didChangeIOSurface:surface];
   if (surface == NULL) {
     dispatch_suspend(self.timerSource);
   } else {
@@ -215,15 +213,27 @@ static const uint64_t FBSimulatorFramebufferFrameTimeInterval = NSEC_PER_MSEC * 
   }
 }
 
-- (void)frameSteamEnded
+- (void)didRecieveDamageRect:(CGRect)rect
 {
+  [self.imageGenerator didRecieveDamageRect:rect];
+}
+
+- (NSString *)consumerIdentifier
+{
+  return NSStringFromClass(self.class);
+}
+
+#pragma mark Public
+
+- (void)frameSteamEndedWithTeardownGroup:(dispatch_group_t)group error:(NSError *)error
+{
+  [super frameSteamEndedWithTeardownGroup:group error:error];
+
   if (self.timerSource) {
     dispatch_source_cancel(self.timerSource);
     _timerSource = nil;
   }
-  [self currentSurfaceChanged:nil];
-
-  [super frameSteamEnded];
+  [self didChangeIOSurface:nil];
 }
 
 #pragma mark Private
