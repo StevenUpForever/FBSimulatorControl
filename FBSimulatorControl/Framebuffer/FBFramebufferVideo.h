@@ -12,15 +12,41 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @class FBFramebufferFrameGenerator;
-@class FBFramebufferRenderable;
+@class FBFramebufferSurface;
 @class FBVideoEncoderConfiguration;
 @protocol FBControlCoreLogger;
 @protocol FBSimulatorEventSink;
 
 /**
- A Framebuffer Component that encodes video and writes to a file.
+ A Framebuffer Component that encodes video and writes it to a file.
  */
-@protocol FBFramebufferVideo <NSObject>
+@interface FBFramebufferVideo : NSObject
+
+#pragma mark Initializers
+
+/**
+ The Initializer for a Frame Generator.
+
+ @param configuration the configuration to use for encoding.
+ @param frameGenerator the Frame Generator to register with.
+ @param logger the logger object to log events to, may be nil.
+ @param eventSink an event sink to report video output to.
+ @return a new FBFramebufferVideo instance.
+ */
++ (instancetype)videoWithConfiguration:(FBVideoEncoderConfiguration *)configuration frameGenerator:(FBFramebufferFrameGenerator *)frameGenerator logger:(id<FBControlCoreLogger>)logger eventSink:(id<FBSimulatorEventSink>)eventSink;
+
+/**
+ The Designated Initializer.
+
+ @param configuration the configuration to use for encoding.
+ @param surface the Renderable to Record.
+ @param logger the logger object to log events to, may be nil.
+ @param eventSink an event sink to report video output to.
+ @return a new FBFramebufferVideo instance.
+ */
++ (instancetype)videoWithConfiguration:(FBVideoEncoderConfiguration *)configuration surface:(FBFramebufferSurface *)surface logger:(id<FBControlCoreLogger>)logger eventSink:(id<FBSimulatorEventSink>)eventSink;
+
+#pragma mark Public Methods
 
 /**
  Starts Recording Video.
@@ -37,46 +63,10 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (void)stopRecording:(dispatch_group_t)group;
 
-@end
-
 /**
- An implementation of FBFramebufferVideo, using FBVideoEncoderBuiltIn.
+ YES if Surface Based Supporting is available, NO otherwise.
  */
-@interface FBFramebufferVideo_BuiltIn : NSObject <FBFramebufferVideo>
-
-/**
- The Designated Initializer.
-
- @param configuration the configuration to use for encoding.
- @param frameGenerator the Frame Generator to register with.
- @param logger the logger object to log events to, may be nil.
- @param eventSink an event sink to report video output to.
- @return a new FBFramebufferVideo instance.
- */
-+ (instancetype)videoWithConfiguration:(FBVideoEncoderConfiguration *)configuration frameGenerator:(FBFramebufferFrameGenerator *)frameGenerator logger:(id<FBControlCoreLogger>)logger eventSink:(id<FBSimulatorEventSink>)eventSink;
-
-@end
-
-/**
- An implementation of FBFramebufferVideo, using FBVideoEncoderSimulatorKit
- */
-@interface FBFramebufferVideo_SimulatorKit : NSObject <FBFramebufferVideo>
-
-/**
- The Designated Initializer.
-
- @param configuration the configuration to use for encoding.
- @param renderable the Renderable to Record.
- @param logger the logger object to log events to, may be nil.
- @param eventSink an event sink to report video output to.
- @return a new FBFramebufferVideo instance.
- */
-+ (instancetype)videoWithConfiguration:(FBVideoEncoderConfiguration *)configuration renderable:(FBFramebufferRenderable *)renderable logger:(id<FBControlCoreLogger>)logger eventSink:(id<FBSimulatorEventSink>)eventSink;
-
-/**
- YES if this class is supported, NO otherwise.
- */
-+ (BOOL)isSupported;
++ (BOOL)surfaceSupported;
 
 @end
 
