@@ -9,6 +9,8 @@
 
 #import <Foundation/Foundation.h>
 
+#import <FBControlCore/FBControlCore.h>
+
 NS_ASSUME_NONNULL_BEGIN
 
 @class FBFramebufferFrameGenerator;
@@ -18,11 +20,9 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol FBSimulatorEventSink;
 
 /**
- A Framebuffer Component that encodes video and writes it to a file.
+ Controls the Recording of a Simulator's Framebuffer to a Video.
  */
-@interface FBFramebufferVideo : NSObject
-
-#pragma mark Initializers
+@interface FBSimulatorVideo : NSObject <FBVideoRecordingSession>
 
 /**
  The Initializer for a Frame Generator.
@@ -31,7 +31,7 @@ NS_ASSUME_NONNULL_BEGIN
  @param frameGenerator the Frame Generator to register with.
  @param logger the logger object to log events to, may be nil.
  @param eventSink an event sink to report video output to.
- @return a new FBFramebufferVideo instance.
+ @return a new FBSimulatorVideo instance.
  */
 + (instancetype)videoWithConfiguration:(FBVideoEncoderConfiguration *)configuration frameGenerator:(FBFramebufferFrameGenerator *)frameGenerator logger:(id<FBControlCoreLogger>)logger eventSink:(id<FBSimulatorEventSink>)eventSink;
 
@@ -42,7 +42,7 @@ NS_ASSUME_NONNULL_BEGIN
  @param surface the Renderable to Record.
  @param logger the logger object to log events to, may be nil.
  @param eventSink an event sink to report video output to.
- @return a new FBFramebufferVideo instance.
+ @return a new FBSimulatorVideo instance.
  */
 + (instancetype)videoWithConfiguration:(FBVideoEncoderConfiguration *)configuration surface:(FBFramebufferSurface *)surface logger:(id<FBControlCoreLogger>)logger eventSink:(id<FBSimulatorEventSink>)eventSink;
 
@@ -52,16 +52,20 @@ NS_ASSUME_NONNULL_BEGIN
  Starts Recording Video.
 
  @param filePath the (optional) file path to record to. If nil is provided, a default path will be used.
- @param group the dispatch_group to put asynchronous work into. When the group's blocks have completed the recording has processed. If nil, an anonymous group will be created.
+ @param timeout the amount of time to wait for the encoding to start.
+ @param error an error out for any error that occurs.
+ @return YES if successful, NO otherwise.
  */
-- (void)startRecordingToFile:(nullable NSString *)filePath group:(dispatch_group_t)group;
+- (BOOL)startRecordingToFile:(nullable NSString *)filePath timeout:(NSTimeInterval)timeout error:(NSError **)error;
 
 /**
  Stops Recording Video.
 
- @param group the dispatch_group to put asynchronous work into. When the group's blocks have completed the recording has processed. If nil, an anonymous group will be created.
+ @param timeout the amount of time to wait for the encoding to start.
+ @param error an error out for any error that occurs.
+ @return YES if successful, NO otherwise.
  */
-- (void)stopRecording:(dispatch_group_t)group;
+- (BOOL)stopRecordingWithTimeout:(NSTimeInterval)timeout error:(NSError **)error;
 
 /**
  YES if Surface Based Supporting is available, NO otherwise.
