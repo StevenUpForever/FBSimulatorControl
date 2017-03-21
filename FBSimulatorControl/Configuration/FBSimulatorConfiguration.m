@@ -26,7 +26,7 @@
 
 #pragma mark Initializers
 
-- (instancetype)initWithNamedDevice:(id<FBControlCoreConfiguration_Device>)device os:(id<FBControlCoreConfiguration_OS>)os auxillaryDirectory:(NSString *)auxillaryDirectory
+- (instancetype)initWithNamedDevice:(FBDeviceType *)device os:(FBOSVersion *)os auxillaryDirectory:(NSString *)auxillaryDirectory
 {
   NSParameterAssert(device);
   NSParameterAssert(os);
@@ -55,8 +55,8 @@
 
 + (instancetype)makeDefaultConfiguration
 {
-  id<FBControlCoreConfiguration_Device> device = FBControlCoreConfiguration_Device_iPhone6.new;
-  id<FBControlCoreConfiguration_OS> os = [FBSimulatorConfiguration newestAvailableOSForDevice:device];
+  FBDeviceType *device = FBControlCoreConfigurationVariants.nameToDevice[FBDeviceNameiPhone6];
+  FBOSVersion *os = [FBSimulatorConfiguration newestAvailableOSForDevice:device];
   NSAssert(
     os,
     @"Could not obtain OS for Default Device '%@'. Available OS Versions %@",
@@ -80,8 +80,8 @@
 
 - (instancetype)initWithCoder:(NSCoder *)coder
 {
-  id<FBControlCoreConfiguration_Device> device = [coder decodeObjectForKey:NSStringFromSelector(@selector(device))];
-  id<FBControlCoreConfiguration_OS> os = [coder decodeObjectForKey:NSStringFromSelector(@selector(os))];
+  FBDeviceType *device = [coder decodeObjectForKey:NSStringFromSelector(@selector(device))];
+  FBOSVersion *os = [coder decodeObjectForKey:NSStringFromSelector(@selector(os))];
   NSString *auxillaryDirectory = [coder decodeObjectForKey:NSStringFromSelector(@selector(auxillaryDirectory))];
   return [self initWithNamedDevice:device os:os auxillaryDirectory:auxillaryDirectory];
 }
@@ -165,14 +165,20 @@
 
 #pragma mark - Devices
 
-+ (instancetype)withDevice:(id<FBControlCoreConfiguration_Device>)device
++ (instancetype)withDevice:(FBDeviceType *)device
 {
   return [self.defaultConfiguration withDevice:device];
 }
 
-- (instancetype)withDevice:(id<FBControlCoreConfiguration_Device>)device
+- (instancetype)withDevice:(FBDeviceType *)device
 {
   NSParameterAssert(device);
+  FBOSVersion *os = self.os;
+  if ([FBSimulatorConfiguration device:device andOSPairSupported:self.os]) {
+    return [[FBSimulatorConfiguration alloc] initWithNamedDevice:device os:self.os auxillaryDirectory:self.auxillaryDirectory];
+  }
+  os = [FBSimulatorConfiguration newestAvailableOSForDevice:device];
+  NSAssert(os, @"Could not derive a compatible OS for device %@", device.deviceName);
   return [[FBSimulatorConfiguration alloc] initWithNamedDevice:device os:self.os auxillaryDirectory:self.auxillaryDirectory];
 }
 
@@ -183,362 +189,34 @@
 
 - (instancetype)withDeviceNamed:(FBDeviceName)deviceName
 {
-  id<FBControlCoreConfiguration_Device> device = FBControlCoreConfigurationVariants.nameToDevice[deviceName];
+  FBDeviceType *device = FBControlCoreConfigurationVariants.nameToDevice[deviceName];
   NSAssert(device, @"%@ is not a valid device name", deviceName);
   return [self withDevice:device];
 }
 
-#pragma mark iPhone Devices
-
-+ (instancetype)iPhone4s
-{
-  return [self.defaultConfiguration iPhone4s];
-}
-
-- (instancetype)iPhone4s
-{
-  return [self updateNamedDeviceClass:FBControlCoreConfiguration_Device_iPhone4s.class];
-}
-
-+ (instancetype)iPhone5
-{
-  return [self.defaultConfiguration iPhone5];
-}
-
-- (instancetype)iPhone5
-{
-  return [self updateNamedDeviceClass:FBControlCoreConfiguration_Device_iPhone5.class];
-}
-
-+ (instancetype)iPhone5s
-{
-  return [self.defaultConfiguration iPhone5s];
-}
-
-- (instancetype)iPhone5s
-{
-  return [self updateNamedDeviceClass:FBControlCoreConfiguration_Device_iPhone5s.class];
-}
-
-+ (instancetype)iPhone6
-{
-  return [self.defaultConfiguration iPhone6];
-}
-
-- (instancetype)iPhone6
-{
-  return [self updateNamedDeviceClass:FBControlCoreConfiguration_Device_iPhone6.class];
-}
-
-+ (instancetype)iPhone6s
-{
-    return [self.defaultConfiguration iPhone6s];
-}
-
-- (instancetype)iPhone6s
-{
-    return [self updateNamedDeviceClass:FBControlCoreConfiguration_Device_iPhone6S.class];
-}
-
-+ (instancetype)iPhone6Plus
-{
-  return [self.defaultConfiguration iPhone6Plus];
-}
-
-- (instancetype)iPhone6Plus
-{
-  return [self updateNamedDeviceClass:FBControlCoreConfiguration_Device_iPhone6Plus.class];
-}
-
-+ (instancetype)iPhone6sPlus
-{
-  return [self.defaultConfiguration iPhone6sPlus];
-}
-
-- (instancetype)iPhone6sPlus
-{
-  return [self updateNamedDeviceClass:FBControlCoreConfiguration_Device_iPhone6SPlus.class];
-}
-
-+ (instancetype)iPhoneSE
-{
-  return [self.defaultConfiguration iPhoneSE];
-}
-
-- (instancetype)iPhoneSE
-{
-  return [self updateNamedDeviceClass:FBControlCoreConfiguration_Device_iPhoneSE.class];
-}
-
-+ (instancetype)iPhone7
-{
-  return [self.defaultConfiguration iPhone7];
-}
-
-- (instancetype)iPhone7
-{
-  return [self updateNamedDeviceClass:FBControlCoreConfiguration_Device_iPhone7.class];
-}
-
-+ (instancetype)iPhone7Plus
-{
-  return [self.defaultConfiguration iPhone7Plus];
-}
-
-- (instancetype)iPhone7Plus
-{
-  return [self updateNamedDeviceClass:FBControlCoreConfiguration_Device_iPhone7Plus.class];
-}
-
-#pragma mark iPad Devices
-
-+ (instancetype)iPad2
-{
-  return [self.defaultConfiguration iPad2];
-}
-
-- (instancetype)iPad2
-{
-  return [self updateNamedDeviceClass:FBControlCoreConfiguration_Device_iPad2.class];
-}
-
-+ (instancetype)iPadRetina
-{
-  return [self.defaultConfiguration iPadRetina];
-}
-
-- (instancetype)iPadRetina
-{
-  return [self updateNamedDeviceClass:FBControlCoreConfiguration_Device_iPadRetina.class];
-}
-
-+ (instancetype)iPadPro
-{
-  return [self.defaultConfiguration iPadPro];
-}
-
-- (instancetype)iPadPro
-{
-  return FBControlCoreGlobalConfiguration.isXcode8OrGreater
-    ? [self updateNamedDeviceClass:FBControlCoreConfiguration_Device_iPadPro_12_9_Inch.class]
-    : [self updateNamedDeviceClass:FBControlCoreConfiguration_Device_iPadPro.class];
-}
-
-+ (instancetype)iPadAir
-{
-  return [self.defaultConfiguration iPadAir];
-}
-
-- (instancetype)iPadAir
-{
-  return [self updateNamedDeviceClass:FBControlCoreConfiguration_Device_iPadAir.class];
-}
-
-+ (instancetype)iPadAir2
-{
-  return [self.defaultConfiguration iPadAir2];
-}
-
-- (instancetype)iPadAir2
-{
-  return [self updateNamedDeviceClass:FBControlCoreConfiguration_Device_iPadAir2.class];
-}
-
-#pragma mark Watch Devices
-
-+ (instancetype)watch38mm
-{
-  return [self.defaultConfiguration watch38mm];
-}
-
-- (instancetype)watch38mm
-{
-  return [self updateNamedDeviceClass:FBControlCoreConfiguration_Device_AppleWatch38mm.class];
-}
-
-+ (instancetype)watch42mm
-{
-  return [self.defaultConfiguration watch42mm];
-}
-
-- (instancetype)watch42mm
-{
-  return [self updateNamedDeviceClass:FBControlCoreConfiguration_Device_AppleWatch42mm.class];
-}
-
-+ (instancetype)watchSeries2_38mm
-{
-  return [self.defaultConfiguration watch42mm];
-}
-
-- (instancetype)watchSeries2_38mm
-{
-  return [self updateNamedDeviceClass:FBControlCoreConfiguration_Device_AppleWatchSeries2_38mm.class];
-}
-
-+ (instancetype)watchSeries2_42mm
-{
-  return [self.defaultConfiguration watch42mm];
-}
-
-- (instancetype)watchSeries2_42mm
-{
-  return [self updateNamedDeviceClass:FBControlCoreConfiguration_Device_AppleWatchSeries2_42mm.class];
-}
-
-#pragma mark Apple TV Devices
-
-+ (instancetype)appleTV1080p
-{
-  return [self.defaultConfiguration appleTV1080p];
-}
-
-- (instancetype)appleTV1080p
-{
-  return [self updateNamedDeviceClass:FBControlCoreConfiguration_Device_AppleTV1080p.class];
-}
-
 #pragma mark - OS Versions
 
-+ (instancetype)withOS:(id<FBControlCoreConfiguration_OS>)os
++ (instancetype)withOS:(FBOSVersion *)os
 {
   return [self.defaultConfiguration withOS:os];
 }
 
-- (instancetype)withOS:(id<FBControlCoreConfiguration_OS>)os
+- (instancetype)withOS:(FBOSVersion *)os
 {
   NSParameterAssert(os);
   return [[FBSimulatorConfiguration alloc] initWithNamedDevice:self.device os:os auxillaryDirectory:self.auxillaryDirectory];
 }
 
-+ (nullable instancetype)withOSNamed:(NSString *)osName
++ (instancetype)withOSNamed:(FBOSVersionName)osName
 {
   return [self.defaultConfiguration withOSNamed:osName];
 }
 
-- (nullable instancetype)withOSNamed:(NSString *)osName
+- (instancetype)withOSNamed:(FBOSVersionName)osName
 {
-  id<FBControlCoreConfiguration_OS> os = FBControlCoreConfigurationVariants.nameToOSVersion[osName];
-  if (!os) {
-    return nil;
-  }
+  FBOSVersion *os = FBControlCoreConfigurationVariants.nameToOSVersion[osName];
+  NSAssert(os, @"%@ is not a valid os name", osName);
   return [self withOS:os];
-}
-
-#pragma mark iOS Versions
-
-- (instancetype)iOS_7_1
-{
-  return [self updateOSVersionClass:FBControlCoreConfiguration_iOS_7_1.class];
-}
-
-- (instancetype)iOS_8_0
-{
-  return [self updateOSVersionClass:FBControlCoreConfiguration_iOS_8_0.class];
-}
-
-- (instancetype)iOS_8_1
-{
-  return [self updateOSVersionClass:FBControlCoreConfiguration_iOS_8_1.class];
-}
-
-- (instancetype)iOS_8_2
-{
-  return [self updateOSVersionClass:FBControlCoreConfiguration_iOS_8_2.class];
-}
-
-- (instancetype)iOS_8_3
-{
-  return [self updateOSVersionClass:FBControlCoreConfiguration_iOS_8_3.class];
-}
-
-- (instancetype)iOS_8_4
-{
-  return [self updateOSVersionClass:FBControlCoreConfiguration_iOS_8_4.class];
-}
-
-- (instancetype)iOS_9_0
-{
-  return [self updateOSVersionClass:FBControlCoreConfiguration_iOS_9_0.class];
-}
-
-- (instancetype)iOS_9_1
-{
-  return [self updateOSVersionClass:FBControlCoreConfiguration_iOS_9_1.class];
-}
-
-- (instancetype)iOS_9_2
-{
-  return [self updateOSVersionClass:FBControlCoreConfiguration_iOS_9_2.class];
-}
-
-- (instancetype)iOS_9_3
-{
-  return [self updateOSVersionClass:FBControlCoreConfiguration_iOS_9_3.class];
-}
-
-- (instancetype)iOS_10_0
-{
-  return [self updateOSVersionClass:FBControlCoreConfiguration_iOS_10_0.class];
-}
-
-- (instancetype)iOS_10_1
-{
-  return [self updateOSVersionClass:FBControlCoreConfiguration_iOS_10_1.class];
-}
-
-#pragma mark tvOS Versions
-
-- (instancetype)tvOS_9_0
-{
-  return [self updateOSVersionClass:FBControlCoreConfiguration_tvOS_9_0.class];
-}
-
-- (instancetype)tvOS_9_1
-{
-  return [self updateOSVersionClass:FBControlCoreConfiguration_tvOS_9_1.class];
-}
-
-- (instancetype)tvOS_9_2
-{
-  return [self updateOSVersionClass:FBControlCoreConfiguration_tvOS_9_2.class];
-}
-
-- (instancetype)tvOS_10_0
-{
-  return [self updateOSVersionClass:FBControlCoreConfiguration_tvOS_10_0.class];
-}
-
-- (instancetype)tvOS_10_1
-{
-  return [self updateOSVersionClass:FBControlCoreConfiguration_tvOS_10_1.class];
-}
-
-#pragma mark watchOS Versions
-
-- (instancetype)watchOS_2_0
-{
-  return [self updateOSVersionClass:FBControlCoreConfiguration_watchOS_2_0.class];
-}
-
-- (instancetype)watchOS_2_1
-{
-  return [self updateOSVersionClass:FBControlCoreConfiguration_watchOS_2_1.class];
-}
-
-- (instancetype)watchOS_2_2
-{
-  return [self updateOSVersionClass:FBControlCoreConfiguration_watchOS_2_2.class];
-}
-
-- (instancetype)watchOS_3_0
-{
-  return [self updateOSVersionClass:FBControlCoreConfiguration_watchOS_3_0.class];
-}
-
-- (instancetype)watchOS_3_1
-{
-  return [self updateOSVersionClass:FBControlCoreConfiguration_watchOS_3_1.class];
 }
 
 #pragma mark Auxillary Directory
@@ -550,33 +228,9 @@
 
 #pragma mark Private
 
-#pragma mark Deriving new Configurations
-
-- (instancetype)withDevice:(id<FBControlCoreConfiguration_Device>)device andOS:(id<FBControlCoreConfiguration_OS>)os
++ (BOOL)device:(FBDeviceType *)device andOSPairSupported:(FBOSVersion *)os
 {
-  NSParameterAssert(device);
-  NSParameterAssert(os);
-  return [[FBSimulatorConfiguration alloc] initWithNamedDevice:device os:os auxillaryDirectory:self.auxillaryDirectory];
-}
-
-- (instancetype)updateNamedDeviceClass:(Class)class
-{
-  id<FBControlCoreConfiguration_Device> device = [class new];
-  if ([FBSimulatorConfiguration device:device andOSPairSupported:self.os]) {
-    return [self withDevice:device];
-  }
-  id<FBControlCoreConfiguration_OS> os = [FBSimulatorConfiguration newestAvailableOSForDevice:device];
-  return [self withDevice:device andOS:os];
-}
-
-- (instancetype)updateOSVersionClass:(Class)class
-{
-  return [self withOS:[class new]];
-}
-
-+ (BOOL)device:(id<FBControlCoreConfiguration_Device>)device andOSPairSupported:(id<FBControlCoreConfiguration_OS>)os
-{
-  return [os.families containsObject:device.family];
+  return [os.families containsObject:@(device.family)];
 }
 
 @end

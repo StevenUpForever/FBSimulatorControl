@@ -251,16 +251,16 @@ extension IndividualCreationConfiguration : Parsable {
     ])
   }
 
-  static var deviceParser: Parser<FBControlCoreConfiguration_Device> {
+  static var deviceParser: Parser<FBDeviceName> {
     let desc = PrimitiveDesc(name: "device-name", desc: "Device Name.")
 
     return Parser.single(desc) { token in
       let nameToDevice = FBControlCoreConfigurationVariants.nameToDevice
       let deviceName = FBDeviceName(rawValue: token)
-      guard let device = nameToDevice[deviceName] else {
+      guard let _ = nameToDevice[deviceName] else {
         throw ParseError.custom("\(token) is not a valid device name")
       }
-      return device
+      return deviceName
     }
   }
 
@@ -274,15 +274,15 @@ extension IndividualCreationConfiguration : Parsable {
     }
   }
 
-  static var osVersionParser: Parser<FBControlCoreConfiguration_OS> {
+  static var osVersionParser: Parser<FBOSVersionName> {
     let desc = PrimitiveDesc(name: "os-version", desc: "OS Version.")
     return Parser.single(desc) { token in
       let nameToOSVersion = FBControlCoreConfigurationVariants.nameToOSVersion
       let osVersionName = FBOSVersionName(rawValue: token)
-      guard let osVersion = nameToOSVersion[osVersionName] else {
+      guard let _ = nameToOSVersion[osVersionName] else {
         throw ParseError.custom("\(token) is not a valid device name")
       }
-      return osVersion
+      return osVersionName
     }
   }
 
@@ -477,6 +477,15 @@ extension Record : Parsable {
   }
 }
 
+extension FileOutput : Parsable {
+  public static var parser: Parser<FileOutput> {
+    return Parser.alternative([
+      Parser.ofString("-", FileOutput.standardOut),
+      Parser<FileOutput>.ofFile.fmap(FileOutput.path),
+    ])
+  }
+}
+
 extension Action : Parsable {
   public static var parser: Parser<Action> {
     return Parser
@@ -505,6 +514,7 @@ extension Action : Parsable {
         self.serviceInfoParser,
         self.setLocationParser,
         self.shutdownParser,
+        self.streamParser,
         self.tapParser,
         self.terminateParser,
         self.uninstallParser,
@@ -730,6 +740,12 @@ extension Action : Parsable {
       .fmap { (latitude, longitude) in
         Action.setLocation(latitude, longitude)
       }
+  }
+
+  static var streamParser: Parser<Action> {
+    return Parser
+      .ofCommandWithArg(EventName.Stream.rawValue, FileOutput.parser.optional())
+      .fmap(Action.stream)
   }
 
   static var terminateParser: Parser<Action> {
@@ -969,13 +985,13 @@ struct FBSimulatorBootConfigurationParser {
   static var scaleParser: Parser<FBSimulatorScale> {
     let subparsers: [Parser<FBSimulatorScale>] = [
       Parser<FBSimulatorScale>
-        .ofFlag("scale=25", FBSimulatorScale_25(), ""),
+        .ofFlag("scale=25", .scale25, ""),
       Parser<FBSimulatorScale>
-        .ofFlag("scale=50", FBSimulatorScale_50(), ""),
+        .ofFlag("scale=50", .scale50, ""),
       Parser<FBSimulatorScale>
-        .ofFlag("scale=75", FBSimulatorScale_75(), ""),
+        .ofFlag("scale=75", .scale75, ""),
       Parser<FBSimulatorScale>
-        .ofFlag("scale=100", FBSimulatorScale_100(), "")
+        .ofFlag("scale=100", .scale100, "")
     ]
 
     return Parser.alternative(subparsers)

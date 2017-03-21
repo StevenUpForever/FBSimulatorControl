@@ -33,8 +33,8 @@ public struct ListenInterface {
  A Configuration for Creating an Individual Simulator.
  */
 public struct IndividualCreationConfiguration {
-  let osVersion: FBControlCoreConfiguration_OS?
-  let deviceType: FBControlCoreConfiguration_Device?
+  let osVersion: FBOSVersionName?
+  let deviceType: FBDeviceName?
   let auxDirectory : String?
 }
 
@@ -61,6 +61,11 @@ public enum DiagnosticFormat : String {
 public enum Record {
   case start(String?)
   case stop
+}
+
+public enum FileOutput {
+  case path(String)
+  case standardOut
 }
 
 /**
@@ -93,6 +98,7 @@ public enum Action {
   case serviceInfo(String)
   case setLocation(Double,Double)
   case shutdown
+  case stream(FileOutput?)
   case tap(Double, Double)
   case terminate(String)
   case uninstall(String)
@@ -219,8 +225,8 @@ extension ListenInterface : EventReporterSubject {
 
 extension IndividualCreationConfiguration : Equatable {}
 public func == (left: IndividualCreationConfiguration, right: IndividualCreationConfiguration) -> Bool {
-  return left.osVersion?.name == right.osVersion?.name &&
-         left.deviceType?.deviceName == right.deviceType?.deviceName &&
+  return left.osVersion == right.osVersion &&
+         left.deviceType == right.deviceType &&
          left.auxDirectory == right.auxDirectory
 }
 
@@ -258,6 +264,18 @@ public func == (left: Record, right: Record) -> Bool {
   case (.start(let leftPath), .start(let rightPath)):
     return leftPath == rightPath
   case (.stop, .stop):
+    return true
+  default:
+    return false
+  }
+}
+
+extension FileOutput : Equatable {}
+public func == (left: FileOutput, right: FileOutput) -> Bool {
+  switch (left, right) {
+  case (.path(let leftPath), .path(let rightPath)):
+    return leftPath == rightPath
+  case (.standardOut, .standardOut):
     return true
   default:
     return false
@@ -319,6 +337,8 @@ public func == (left: Action, right: Action) -> Bool {
     return leftLat == rightLat && leftLon == rightLon
   case (.shutdown, .shutdown):
     return true
+  case (.stream(let leftInfo), .stream(let rightInfo)):
+    return leftInfo == rightInfo
   case (.tap(let leftX, let leftY), .tap(let rightX, let rightY)):
     return leftX == rightX && leftY == rightY
   case (.terminate(let leftBundleID), .terminate(let rightBundleID)):
@@ -389,6 +409,8 @@ extension Action {
       return (EventName.SetLocation, nil)
     case .shutdown:
       return (EventName.Shutdown, nil)
+    case .stream:
+      return (EventName.Stream, nil)
     case .tap:
       return (EventName.Tap, nil)
     case .terminate(let bundleID):
