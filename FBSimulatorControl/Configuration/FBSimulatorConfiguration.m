@@ -55,7 +55,7 @@
 
 + (instancetype)makeDefaultConfiguration
 {
-  FBDeviceType *device = FBControlCoreConfigurationVariants.nameToDevice[FBDeviceNameiPhone6];
+  FBDeviceType *device = FBControlCoreConfigurationVariants.nameToDevice[FBDeviceModeliPhone6];
   FBOSVersion *os = [FBSimulatorConfiguration newestAvailableOSForDevice:device];
   NSAssert(
     os,
@@ -93,28 +93,11 @@
   [coder encodeObject:self.auxillaryDirectory forKey:NSStringFromSelector(@selector(auxillaryDirectory))];
 }
 
-#pragma mark Accessors
-
-- (FBDeviceName)deviceName
-{
-  return self.device.deviceName;
-}
-
-- (NSString *)osVersionString
-{
-  return self.os.name;
-}
-
-- (FBArchitecture)architecture
-{
-  return self.device.simulatorArchitecture;
-}
-
 #pragma mark NSObject
 
 - (NSUInteger)hash
 {
-  return self.deviceName.hash ^ self.osVersionString.hash ^ self.auxillaryDirectory.hash;
+  return self.deviceModel.hash ^ self.osVersionString.hash ^ self.auxillaryDirectory.hash;
 }
 
 - (BOOL)isEqual:(FBSimulatorConfiguration *)object
@@ -123,7 +106,7 @@
     return NO;
   }
 
-  return [self.deviceName isEqualToString:object.deviceName] &&
+  return [self.deviceModel isEqualToString:object.deviceModel] &&
          [self.osVersionString isEqualToString:object.osVersionString] &&
          (self.auxillaryDirectory == object.auxillaryDirectory || [self.auxillaryDirectory isEqualToString:object.auxillaryDirectory]);
 }
@@ -134,7 +117,7 @@
 {
   return [NSString stringWithFormat:
     @"Device '%@' | OS Version '%@' | Aux Directory %@ | Architecture '%@'",
-    self.deviceName,
+    self.deviceModel,
     self.osVersionString,
     self.auxillaryDirectory,
     self.architecture
@@ -156,7 +139,7 @@
 - (NSDictionary *)jsonSerializableRepresentation
 {
   return @{
-    @"device" : self.deviceName,
+    @"device" : self.deviceModel,
     @"os" : self.osVersionString,
     @"aux_directory" : self.auxillaryDirectory ?: NSNull.null,
     @"architecture" : self.architecture
@@ -183,15 +166,15 @@
   return [[FBSimulatorConfiguration alloc] initWithNamedDevice:device os:os auxillaryDirectory:self.auxillaryDirectory];
 }
 
-+ (instancetype)withDeviceNamed:(FBDeviceName)deviceName
++ (instancetype)withDeviceModel:(FBDeviceModel)model
 {
-  return [self.defaultConfiguration withDeviceNamed:deviceName];
+  return [self.defaultConfiguration withDeviceModel:model];
 }
 
-- (instancetype)withDeviceNamed:(FBDeviceName)deviceName
+- (instancetype)withDeviceModel:(FBDeviceModel)model
 {
-  FBDeviceType *device = FBControlCoreConfigurationVariants.nameToDevice[deviceName];
-  device = device ?: [FBDeviceType genericWithName:deviceName];
+  FBDeviceType *device = FBControlCoreConfigurationVariants.nameToDevice[model];
+  device = device ?: [FBDeviceType genericWithName:model];
   return [self withDevice:device];
 }
 
@@ -232,6 +215,21 @@
 + (BOOL)device:(FBDeviceType *)device andOSPairSupported:(FBOSVersion *)os
 {
   return [os.families containsObject:@(device.family)];
+}
+
+- (FBDeviceModel)deviceModel
+{
+  return self.device.model;
+}
+
+- (FBOSVersionName)osVersionString
+{
+  return self.os.name;
+}
+
+- (FBArchitecture)architecture
+{
+  return self.device.simulatorArchitecture;
 }
 
 @end

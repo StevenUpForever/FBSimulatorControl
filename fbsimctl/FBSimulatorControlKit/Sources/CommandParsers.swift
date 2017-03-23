@@ -251,12 +251,12 @@ extension IndividualCreationConfiguration : Parsable {
     ])
   }
 
-  static var deviceParser: Parser<FBDeviceName> {
+  static var deviceParser: Parser<FBDeviceModel> {
     let desc = PrimitiveDesc(name: "device-name", desc: "Device Name.")
 
     return Parser.single(desc) { token in
       let nameToDevice = FBControlCoreConfigurationVariants.nameToDevice
-      let deviceName = FBDeviceName(rawValue: token)
+      let deviceName = FBDeviceModel(rawValue: token)
       guard let _ = nameToDevice[deviceName] else {
         throw ParseError.custom("\(token) is not a valid device name")
       }
@@ -267,8 +267,8 @@ extension IndividualCreationConfiguration : Parsable {
   static var deviceConfigurationParser: Parser<IndividualCreationConfiguration> {
     return self.deviceParser.fmap { device in
       return IndividualCreationConfiguration(
-        osVersion: nil,
-        deviceType: device,
+        os: nil,
+        model: device,
         auxDirectory: nil
       )
     }
@@ -289,8 +289,8 @@ extension IndividualCreationConfiguration : Parsable {
   static var osVersionConfigurationParser: Parser<IndividualCreationConfiguration> {
     return self.osVersionParser.fmap { osVersion in
       return IndividualCreationConfiguration(
-        osVersion: osVersion,
-        deviceType: nil,
+        os: osVersion,
+        model: nil,
         auxDirectory: nil
       )
     }
@@ -304,8 +304,8 @@ extension IndividualCreationConfiguration : Parsable {
   static var auxDirectoryConfigurationParser: Parser<IndividualCreationConfiguration> {
     return self.auxDirectoryParser.fmap { auxDirectory in
       return IndividualCreationConfiguration(
-        osVersion: nil,
-        deviceType: nil,
+        os: nil,
+        model: nil,
         auxDirectory: auxDirectory
       )
     }

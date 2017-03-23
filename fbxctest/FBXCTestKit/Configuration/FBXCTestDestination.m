@@ -49,10 +49,10 @@
 {
   FBSimulatorConfiguration *configuration = [FBSimulatorConfiguration defaultConfiguration];
   if (self.device) {
-    configuration = [configuration withDevice:self.device];
+    configuration = [configuration withDeviceModel:self.device.model];
   }
   if (self.version) {
-    configuration = [configuration withOS:self.version];
+    configuration = [configuration withOSNamed:self.version.name];
   }
   return configuration;
 }

@@ -33,7 +33,7 @@
 {
   FBOSVersion *os = [FBSimulatorConfiguration newestAvailableOSForDevice:self.device];
   NSAssert(os, @"Expected to be able to find any runtime for device %@", self.device);
-  return [self withOS:os];
+  return [self withOSNamed:os.name];
 }
 
 + (FBOSVersion *)oldestAvailableOSForDevice:(FBDeviceType *)device
@@ -45,20 +45,28 @@
 {
   FBOSVersion *os = [FBSimulatorConfiguration oldestAvailableOSForDevice:self.device];
   NSAssert(os, @"Expected to be able to find any runtime for device %@", self.device);
-  return [self withOS:os];
+  return [self withOSNamed:os.name];
 }
 
 + (instancetype)inferSimulatorConfigurationFromDevice:(SimDevice *)simDevice error:(NSError **)error;
 {
-  FBOSVersion *configOS = FBControlCoreConfigurationVariants.nameToOSVersion[simDevice.runtime.name];
-  if (!configOS) {
-    return [[FBSimulatorError describeFormat:@"Could not obtain OS Version for %@, perhaps it is unsupported by FBSimulatorControl", simDevice.runtime.name] fail:error];
+  FBOSVersionName osName = simDevice.runtime.name;
+  FBOSVersion *osVersion = FBControlCoreConfigurationVariants.nameToOSVersion[osName];
+  if (!osVersion) {
+    return [[FBSimulatorError
+      describeFormat:@"Could not obtain OS Version for %@, perhaps it is unsupported by FBSimulatorControl", osName]
+      fail:error];
   }
-  FBDeviceType *configDevice = FBControlCoreConfigurationVariants.nameToDevice[simDevice.deviceType.name];
-  if (!configDevice) {
-    return [[FBSimulatorError describeFormat:@"Could not obtain Device for for %@, perhaps it is unsupported by FBSimulatorControl", simDevice.deviceType.name] fail:error];
+  FBDeviceModel model = simDevice.deviceType.name;
+  FBDeviceType *deviceType = FBControlCoreConfigurationVariants.nameToDevice[model];
+  if (!deviceType) {
+    return [[FBSimulatorError
+      describeFormat:@"Could not obtain Device for for %@, perhaps it is unsupported by FBSimulatorControl", model]
+      fail:error];
   }
-  return [[FBSimulatorConfiguration.defaultConfiguration withOS:configOS] withDevice:configDevice];
+  return [[FBSimulatorConfiguration.defaultConfiguration
+    withOSNamed:osName]
+    withDeviceModel:osName];
 }
 
 - (BOOL)checkRuntimeRequirementsReturningError:(NSError **)error
@@ -110,8 +118,8 @@
     if (!runtime.available) {
       continue;
     }
-    FBOSVersion *os = FBControlCoreConfigurationVariants.nameToOSVersion[runtime.name];
-    if (!os) {
+    FBOSVersionName osName = runtime.name;
+    if (!FBControlCoreConfigurationVariants.nameToOSVersion[runtime.name]) {
       [absentOSVersions addObject:runtime.name];
       continue;
     }
@@ -120,13 +128,13 @@
       if (![runtime supportsDeviceType:deviceType]) {
         continue;
       }
-      FBDeviceType *device = FBControlCoreConfigurationVariants.nameToDevice[deviceType.name];
-      if (!device) {
+      FBDeviceModel model = deviceType.name;
+      if (!FBControlCoreConfigurationVariants.nameToDevice[model]) {
         [absentDeviceTypes addObject:deviceType.name];
         continue;
       }
 
-      FBSimulatorConfiguration *configuration = [[FBSimulatorConfiguration withDevice:device] withOS:os];
+      FBSimulatorConfiguration *configuration = [[FBSimulatorConfiguration withDeviceModel:model] withOSNamed:osName];
       [configurations addObject:configuration];
     }
   }
@@ -231,7 +239,7 @@
 + (NSPredicate *)deviceTypePredicate:(FBDeviceType *)device
 {
   return [NSPredicate predicateWithBlock:^ BOOL (SimDeviceType *deviceType, NSDictionary *_) {
-    return [deviceType.name isEqualToString:device.deviceName];
+    return [deviceType.name isEqualToString:device.model];
   }];
 }
 

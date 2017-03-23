@@ -39,21 +39,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong, readonly) FBOSVersion *os;
 
 /**
- The Name of the Device to Simulate. Must not be nil.
- */
-@property (nonatomic, copy, readonly) FBDeviceName deviceName;
-
-/**
- A String Representation of the OS Version of the Simulator. Must not be nil.
- */
-@property (nonatomic, copy, readonly) NSString *osVersionString;
-
-/**
- A String Representation of the Instruction Set Architecture of the Simulator. Must not be nil.
- */
-@property (nonatomic, copy, readonly) NSString *architecture;
-
-/**
  The Location to store auxillary files in.
  Auxillary files are stored per-simulator, so will be nested inside directories for each Simulator.
  If no path is provided, a default Auxillary directory inside the Simulator's data directory will be used.
@@ -69,25 +54,13 @@ NS_ASSUME_NONNULL_BEGIN
 #pragma mark - Devices
 
 /**
- A Configuration with the provided Device Configuration.
- */
-+ (instancetype)withDevice:(FBDeviceType *)device;
-- (instancetype)withDevice:(FBDeviceType *)device;
-
-/**
  A Configuration with the provided Device Name.
- Will assert if the deviceName is not a valid Device Name.
+ Will assume a 'Default' Configuration of the provided Device Name if it is unknown to the Framework.
  */
-+ (instancetype)withDeviceNamed:(FBDeviceName)deviceName;
-- (instancetype)withDeviceNamed:(FBDeviceName)deviceName;
++ (instancetype)withDeviceModel:(FBDeviceModel)model;
+- (instancetype)withDeviceModel:(FBDeviceModel)model;
 
 #pragma mark - OS Versions
-
-/**
- A Configuration with the provided OS.
- */
-+ (instancetype)withOS:(FBOSVersion *)os;
-- (instancetype)withOS:(FBOSVersion *)os;
 
 /**
  A Configuration with the provided OS Name.
