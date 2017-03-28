@@ -192,9 +192,9 @@ FBiOSTargetFormatKey const FBiOSTargetFormatContainerApplicationProcessIdentifie
   } else if ([field isEqualToString:FBiOSTargetFormatName]) {
     return target.name;
   } else if ([field isEqualToString:FBiOSTargetFormatDeviceName]) {
-    return target.deviceConfiguration.model;
+    return target.deviceType.model;
   } else if ([field isEqualToString:FBiOSTargetFormatOSVersion]) {
-    return target.osConfiguration.name;
+    return target.osVersion.name;
   } else if ([field isEqualToString:FBiOSTargetFormatState]) {
     return FBSimulatorStateStringFromState(target.state);
   } else if ([field isEqualToString:FBiOSTargetFormatArchitecture]) {
