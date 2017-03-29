@@ -159,7 +159,7 @@ struct ActionRunner : Runner {
     switch action {
     case .config:
       let config = FBControlCoreGlobalConfiguration()
-      let subject = SimpleSubject(EventName.Config, EventType.Discrete, ControlCoreSubject(config))
+      let subject = SimpleSubject(.config, .discrete, ControlCoreSubject(config))
       return CommandResult.success(subject)
     case .list:
       let context = self.context.replace(query)
@@ -199,10 +199,10 @@ struct ListenRunner : Runner, CommandPerformer {
     do {
       let interface = self.context.value.0
       let relay = SynchronousRelay(relay: try self.makeBaseRelay(), reporter: self.context.reporter, handle: interface.handle) {
-        self.context.reporter.reportSimple(EventName.Listen, EventType.Started, interface)
+        self.context.reporter.reportSimple(.listen, .started, interface)
       }
       let result = RelayRunner(relay: relay).run()
-      self.context.reporter.reportSimple(EventName.Listen, EventType.Ended, interface)
+      self.context.reporter.reportSimple(.listen, .ended, interface)
       return result
     } catch let error as CustomStringConvertible {
       return CommandResult.failure(error.description)
@@ -219,7 +219,7 @@ struct ListenRunner : Runner, CommandPerformer {
       relays.append(HttpRelay(portNumber: httpPort, performer: performer))
     }
     if interface.stdin {
-      let commandBuffer = LineBuffer(performer: self, reporter: self.context.reporter)
+      let commandBuffer = CommandBuffer(performer: self, reporter: self.context.reporter)
       relays.append(FileHandleRelay(commandBuffer: commandBuffer))
     }
     if let hidPort = interface.hid {
@@ -253,7 +253,7 @@ struct ListRunner : Runner {
   func run() -> CommandResult {
     let targets = self.context.query(self.context.value)
     let subjects: [EventReporterSubject] = targets.map { target in
-      SimpleSubject(EventName.List, EventType.Discrete, iOSTargetSubject(target: target, format: self.context.format))
+      SimpleSubject(.list, .discrete, iOSTargetSubject(target: target, format: self.context.format))
     }
     return .success(CompositeSubject(subjects))
   }
@@ -265,7 +265,7 @@ struct ListDeviceSetsRunner : Runner {
   func run() -> CommandResult {
     let deviceSets = self.deviceSets
     let subjects: [EventReporterSubject] = deviceSets.map { deviceSet in
-      SimpleSubject(EventName.ListDeviceSets, EventType.Discrete, deviceSet)
+      SimpleSubject(.listDeviceSets, .discrete, deviceSet)
     }
     return .success(CompositeSubject(subjects))
   }

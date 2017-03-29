@@ -395,69 +395,69 @@ extension Action {
   public var reportable: (EventName, EventReporterSubject?) { get {
     switch self {
     case .approve(let bundleIDs):
-      return (EventName.Approve, StringsSubject(bundleIDs))
+      return (.approve, StringsSubject(bundleIDs))
     case .boot:
-      return (EventName.Boot, nil)
+      return (.boot, nil)
     case .clearKeychain(let bundleID):
-      return (EventName.ClearKeychain, bundleID)
+      return (.clearKeychain, bundleID)
     case .config:
-      return (EventName.Config, nil)
+      return (.config, nil)
     case .create:
-      return (EventName.Create, nil)
+      return (.create, nil)
     case .delete:
-      return (EventName.Delete, nil)
+      return (.delete, nil)
     case .diagnose(let query, _):
-      return (EventName.Diagnose, ControlCoreSubject(query))
+      return (.diagnose, ControlCoreSubject(query))
     case .erase:
-      return (EventName.Erase, nil)
+      return (.erase, nil)
     case .focus:
-      return (EventName.Focus, nil)
+      return (.focus, nil)
     case .hid(let event):
-      return (EventName.Hid, ControlCoreSubject(event))
+      return (.hid, ControlCoreSubject(event))
     case .install:
-      return (EventName.Install, nil)
+      return (.install, nil)
     case .keyboardOverride:
-      return (EventName.KeyboardOverride, nil)
+      return (.keyboardOverride, nil)
     case .launchAgent(let launch):
-      return (EventName.Launch, ControlCoreSubject(launch))
+      return (.launch, ControlCoreSubject(launch))
     case .launchApp(let launch):
-      return (EventName.Launch, ControlCoreSubject(launch))
+      return (.launch, ControlCoreSubject(launch))
     case .launchXCTest(let configuration):
-        return (EventName.LaunchXCTest, ControlCoreSubject(configuration))
+        return (.launchXCTest, ControlCoreSubject(configuration))
     case .list:
-        return (EventName.List, nil)
+        return (.list, nil)
     case .listApps:
-      return (EventName.ListApps, nil)
+      return (.listApps, nil)
     case .listDeviceSets:
-      return (EventName.ListDeviceSets, nil)
+      return (.listDeviceSets, nil)
     case .listen:
-      return (EventName.Listen, nil)
+      return (.listen, nil)
     case .open(let url):
-      return (EventName.Open, url.absoluteString)
+      return (.open, url.absoluteString)
     case .record(let record):
-      return (EventName.Record, record)
+      return (.record, record)
     case .relaunch(let appLaunch):
-      return (EventName.Relaunch, ControlCoreSubject(appLaunch))
+      return (.relaunch, ControlCoreSubject(appLaunch))
     case .search(let search):
-      return (EventName.Search, ControlCoreSubject(search))
+      return (.search, ControlCoreSubject(search))
     case .serviceInfo:
-      return (EventName.ServiceInfo, nil)
+      return (.serviceInfo, nil)
     case .setLocation:
-      return (EventName.SetLocation, nil)
+      return (.setLocation, nil)
     case .shutdown:
-      return (EventName.Shutdown, nil)
+      return (.shutdown, nil)
     case .stream:
-      return (EventName.Stream, nil)
+      return (.stream, nil)
     case .tap:
-      return (EventName.Tap, nil)
+      return (.tap, nil)
     case .terminate(let bundleID):
-      return (EventName.Terminate, bundleID)
+      return (.terminate, bundleID)
     case .uninstall(let bundleID):
-      return (EventName.Uninstall, bundleID)
+      return (.uninstall, bundleID)
     case .upload:
-      return (EventName.Diagnose, nil)
+      return (.diagnose, nil)
     case .watchdogOverride(let bundleIDs, _):
-      return (EventName.WatchdogOverride, StringsSubject(bundleIDs))
+      return (.watchdogOverride, StringsSubject(bundleIDs))
     }
   }}
 }
