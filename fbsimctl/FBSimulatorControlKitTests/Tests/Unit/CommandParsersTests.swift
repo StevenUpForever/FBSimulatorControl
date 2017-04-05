@@ -15,14 +15,20 @@ import FBSimulatorControl
 class FBiOSTargetFormatParserTests : XCTestCase {
   func testParsesKeywords() {
     self.assertParsesAll(FBiOSTargetFormatParsers.parser, [
-      (["--udid"], FBiOSTargetFormat(fields: [.UDID])),
-      (["--name"], FBiOSTargetFormat(fields: [.name])),
-      (["--model"], FBiOSTargetFormat(fields: [.model])),
-      (["--os"], FBiOSTargetFormat(fields: [.osVersion])),
-      (["--state"], FBiOSTargetFormat(fields: [.state])),
-      (["--arch"], FBiOSTargetFormat(fields: [.architecture])),
-      (["--pid"], FBiOSTargetFormat(fields: [.processIdentifier])),
-      (["--container-pid"], FBiOSTargetFormat(fields: [.containerApplicationProcessIdentifier]))
+      (["--format", "%u"], FBiOSTargetFormat(fields: [.UDID])),
+      (["--format=%u"], FBiOSTargetFormat(fields: [.UDID])),
+      (["--format", "%n"], FBiOSTargetFormat(fields: [.name])),
+      (["--format=%n"], FBiOSTargetFormat(fields: [.name])),
+      (["--format", "%m"], FBiOSTargetFormat(fields: [.model])),
+      (["--format=%m"], FBiOSTargetFormat(fields: [.model])),
+      (["--format", "%o"], FBiOSTargetFormat(fields: [.osVersion])),
+      (["--format=%o"], FBiOSTargetFormat(fields: [.osVersion])),
+      (["--format", "%s"], FBiOSTargetFormat(fields: [.state])),
+      (["--format=%s"], FBiOSTargetFormat(fields: [.state])),
+      (["--format", "%a"], FBiOSTargetFormat(fields: [.architecture])),
+      (["--format=%a"], FBiOSTargetFormat(fields: [.architecture])),
+      (["--format", "%p"], FBiOSTargetFormat(fields: [.processIdentifier])),
+      (["--format=%p"], FBiOSTargetFormat(fields: [.processIdentifier])),
     ])
   }
 }
@@ -126,6 +132,7 @@ let validConfigurations: [([String], Configuration)] = [
   (["--debug-logging"], Configuration(outputOptions: OutputOptions.DebugLogging, managementOptions: FBSimulatorManagementOptions(), deviceSetPath: nil)),
   (["--kill-all", "--kill-spurious"], Configuration(outputOptions: OutputOptions(), managementOptions: FBSimulatorManagementOptions.killAllOnFirstStart.union(.killSpuriousSimulatorsOnFirstStart), deviceSetPath: nil)),
   (["--set", "/usr/bin"], Configuration(outputOptions: OutputOptions(), managementOptions: FBSimulatorManagementOptions(), deviceSetPath: "/usr/bin")),
+  (["--set=/usr/bin"], Configuration(outputOptions: OutputOptions(), managementOptions: FBSimulatorManagementOptions(), deviceSetPath: "/usr/bin")),
   (["--debug-logging", "--set", "/usr/bin", "--delete-all", "--kill-spurious"], Configuration(outputOptions: OutputOptions.DebugLogging, managementOptions: FBSimulatorManagementOptions.deleteAllOnFirstStart.union(.killSpuriousSimulatorsOnFirstStart), deviceSetPath: "/usr/bin")),
   (["--delete-all", "--set", "/usr/bin", "--debug-logging", "--kill-spurious"], Configuration(outputOptions: OutputOptions.DebugLogging, managementOptions: FBSimulatorManagementOptions.deleteAllOnFirstStart.union(.killSpuriousSimulatorsOnFirstStart), deviceSetPath: "/usr/bin")),
   (["--set", "/usr/bin", "--delete-all", "--kill-spurious"], Configuration(outputOptions: OutputOptions(), managementOptions: FBSimulatorManagementOptions.deleteAllOnFirstStart.union(.killSpuriousSimulatorsOnFirstStart), deviceSetPath: "/usr/bin"))
@@ -136,6 +143,9 @@ let validQueries: [([String], FBiOSTargetQuery)] = [
   (["iPhone 5"], .device(.modeliPhone5)),
   (["iPad 2"], .device(.modeliPad2)),
   (["iOS 9.0", "iOS 9.1"], .osVersions([.nameiOS_9_0, .nameiOS_9_1])),
+  (["--name=foo"], .named("foo")),
+  (["--name", "boo"], .named("boo")),
+  (["--name='Foo Bar'"], .named("Foo Bar")),
   (["--state=creating"], .state(.creating)),
   (["--state=shutdown"], .state(.shutdown)),
   (["--state=booted"], .state(.booted)),
@@ -146,8 +156,8 @@ let validQueries: [([String], FBiOSTargetQuery)] = [
   (["--arch=armv7"], .architecture(.armv7)),
   (["--arch=armv7s"], .architecture(.armv7s)),
   (["--arch=arm64"], .architecture(.arm64)),
-  (["--simulators"], .targetType(FBiOSTargetType.simulator)),
-  (["--devices"], .targetType(FBiOSTargetType.device)),
+  (["--simulators"], .targetType(.simulator)),
+  (["--devices"], .targetType(.device)),
   (["--simulators", "--devices", "iPhone 6s"], FBiOSTargetQuery.targetType(FBiOSTargetType.simulator.union(FBiOSTargetType.device)).device(.modeliPhone6S)),
   (["--first", "2", "iPhone 6"], FBiOSTargetQuery.device(.modeliPhone6).ofCount(2)),
   (["B8EEA6C4-841B-47E5-92DE-014E0ECD8139"], .udids(["B8EEA6C4-841B-47E5-92DE-014E0ECD8139"])),
@@ -345,7 +355,7 @@ class CommandParserTests : XCTestCase {
       (["iPad 2"], .device(.modeliPad2), nil),
       (["B8EEA6C4-841B-47E5-92DE-014E0ECD8139"], .udids(["B8EEA6C4-841B-47E5-92DE-014E0ECD8139"]), nil),
       (["iPhone 5", "--state=shutdown", "iPhone 6"], FBiOSTargetQuery.devices([.modeliPhone5, .modeliPhone6]).state(.shutdown), nil),
-      (["iPad 2", "--model", "--os"], .device(.modeliPad2), FBiOSTargetFormat(fields: [.model, .osVersion])),
+      (["iPad 2", "--format=%m%o"], .device(.modeliPad2), FBiOSTargetFormat(fields: [.model, .osVersion])),
       (["B8EEA6C4-841B-47E5-92DE-014E0ECD8139"], .udids(["B8EEA6C4-841B-47E5-92DE-014E0ECD8139"]), nil),
     ])
   }

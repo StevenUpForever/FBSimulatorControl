@@ -831,18 +831,13 @@ extension DiagnosticFormat : Parsable {
 
 public struct FBiOSTargetFormatParsers {
   public static var parser: Parser<FBiOSTargetFormat> {
-    let parsers = FBiOSTargetFormatKey.allFields.map { field in
-      return Parser.ofString("--" + field.rawValue, field)
-    }
-
-    let altParser = Parser
-      .alternative(parsers)
-      .sectionize("target-format", "Target Format", "")
-
-    return Parser
-      .manyCount(1, altParser)
-      .fmap(FBiOSTargetFormat.init)
-    }
+    let description = PrimitiveDesc(name: "Target Format", desc: "An iOS Target Format")
+    return Parser<FBiOSTargetFormat>.ofFlagWithArg(
+      "format",
+      Parser.single(description, f: FBiOSTargetFormat.init),
+      "An iOS Target Format"
+    )
+  }
 }
 
 public struct FBiOSTargetQueryParsers {
@@ -867,6 +862,7 @@ public struct FBiOSTargetQueryParsers {
     return Parser.alternative([
       self.firstParser,
       self.uuidParser,
+      self.nameParser,
       self.simulatorStateParser,
       self.architectureParser,
       self.targetTypeParser,
@@ -886,6 +882,16 @@ public struct FBiOSTargetQueryParsers {
     return Parser<FBiOSTargetQuery>
       .ofUDID
       .fmap(FBiOSTargetQuery.udid)
+  }
+
+  static var nameParser: Parser<FBiOSTargetQuery> {
+    let parser: (String) -> FBiOSTargetQuery = FBiOSTargetQuery.named
+    let description = PrimitiveDesc(name: "name", desc: "An iOS Target Name")
+    return Parser<FBiOSTargetQuery>.ofFlagWithArg(
+      "name",
+      Parser.single(description, f: parser),
+      "An iOS Target Name"
+    )
   }
 
   static var architectureParser: Parser<FBiOSTargetQuery> {
