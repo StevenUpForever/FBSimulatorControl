@@ -20,7 +20,7 @@
 
 #pragma mark Initializers
 
-- (instancetype)initWithMapping:(NSDictionary<NSString *, NSArray<NSString *> *> *)mapping
+- (instancetype)initWithMapping:(NSDictionary<FBDiagnosticName, NSArray<NSString *> *> *)mapping
 {
   self = [super init];
   if (!self) {
@@ -126,9 +126,12 @@
 
 @implementation FBBatchLogSearch
 
+static NSString *const KeyLines = @"lines";
+static NSString *const KeyMapping = @"mapping";
+
 #pragma mark Initializers
 
-+ (instancetype)withMapping:(NSDictionary<NSArray<NSString *> *, NSArray<FBLogSearchPredicate *> *> *)mapping lines:(BOOL)lines error:(NSError **)error
++ (instancetype)withMapping:(NSDictionary<NSArray<FBDiagnosticName> *, NSArray<FBLogSearchPredicate *> *> *)mapping lines:(BOOL)lines error:(NSError **)error
 {
   if (![FBCollectionInformation isDictionaryHeterogeneous:mapping keyClass:NSString.class valueClass:NSArray.class]) {
     return [[FBControlCoreError describeFormat:@"%@ is not an dictionary<string, string>", mapping] fail:error];
@@ -147,14 +150,18 @@
   if (![json isKindOfClass:NSDictionary.class]) {
     return [[FBControlCoreError describeFormat:@"%@ is not a dictionary", json] fail:error];
   }
-  NSNumber *lines = json[@"lines"];
+  NSNumber *lines = json[KeyLines];
   if (![lines isKindOfClass:NSNumber.class]) {
-    return [[FBControlCoreError describeFormat:@"%@ is not a number for 'lines'", lines] fail:error];
+    return [[FBControlCoreError
+      describeFormat:@"%@ is not a number for '%@'", lines, KeyLines]
+      fail:error];
   }
 
-  NSDictionary<NSString *, NSArray *> *jsonMapping = json[@"mapping"];
+  NSDictionary<NSString *, NSArray *> *jsonMapping = json[KeyMapping];
   if (![FBCollectionInformation isDictionaryHeterogeneous:jsonMapping keyClass:NSString.class valueClass:NSArray.class]) {
-    return [[FBControlCoreError describeFormat:@"%@ is not a dictionary of <string, array> for 'mapping'", jsonMapping] fail:error];
+    return [[FBControlCoreError
+      describeFormat:@"%@ is not a dictionary of <string, array> for '%@'", jsonMapping, KeyMapping]
+      fail:error];
   }
 
   NSMutableDictionary *predicateMapping = [NSMutableDictionary dictionary];
@@ -223,8 +230,8 @@
     mappingDictionary[key] = [self.mapping[key] valueForKey:@"jsonSerializableRepresentation"];
   }
   return @{
-    @"lines" : @(self.lines),
-    @"mapping" : [mappingDictionary copy],
+    KeyLines : @(self.lines),
+    KeyMapping : [mappingDictionary copy],
   };
 }
 
@@ -270,7 +277,7 @@
 {
   NSParameterAssert([FBCollectionInformation isArrayHeterogeneous:diagnostics withClass:FBDiagnostic.class]);
 
-  // Construct an NSDictionary<NSString, FBDiagnostic> of diagnostics.
+  // Construct an NSDictionary<FBDiagnosticName, FBDiagnostic> of diagnostics.
   NSDictionary *namesToDiagnostics = [NSDictionary dictionaryWithObjects:diagnostics forKeys:[diagnostics valueForKey:@"shortName"]];
 
   // Construct and NSArray<FBLogSearch> instances

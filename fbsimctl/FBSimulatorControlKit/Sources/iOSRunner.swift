@@ -47,20 +47,8 @@ struct iOSActionProvider {
       return iOSTargetRunner.simple(reporter, .uninstall, ControlCoreSubject(appBundleID as NSString)) {
         try target.uninstallApplication(withBundleID: appBundleID)
       }
-    case .launchApp(let appLaunch):
-      return iOSTargetRunner.simple(reporter, .launch, ControlCoreSubject(appLaunch)) {
-        try target.launchApplication(appLaunch)
-      }
-    case .launchXCTest(var configuration):
-      // Always initialize for UI Testing until we make this optional
-      configuration = configuration.withUITesting(true)
-      return iOSTargetRunner.handled(reporter, .launchXCTest, ControlCoreSubject(configuration)) {
-        let handle = try target.startTest(with: configuration)
-        if configuration.timeout > 0 {
-          try target.waitUntilAllTestRunnersHaveFinishedTesting(withTimeout: configuration.timeout)
-        }
-        return handle
-      }
+    case .core(let action):
+      return iOSTargetRunner.core(reporter, action.eventName, target, action)
     case .listApps:
       return iOSTargetRunner.simple(reporter, nil, ControlCoreSubject(target as! ControlCoreValue)) {
         let subject = ControlCoreSubject(target.installedApplications().map { $0.jsonSerializableRepresentation() }  as NSArray)
@@ -115,6 +103,12 @@ struct iOSTargetRunner : Runner {
     return iOSTargetRunner(reporter: reporter, name: name, subject: subject) {
       try action()
       return nil
+    }
+  }
+
+  static func core(_ reporter: iOSReporter, _ name: EventName?, _ target: FBiOSTarget, _ action: FBiOSTargetAction) -> iOSTargetRunner {
+    return iOSTargetRunner(reporter: reporter, name: name, subject: ControlCoreSubject(action as! ControlCoreValue)) {
+      return try action.runAction(target: target, reporter: reporter.reporter)
     }
   }
 

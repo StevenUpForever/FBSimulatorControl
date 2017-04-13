@@ -373,13 +373,22 @@ extension CLI : Parsable {
   public static var parser: Parser<CLI> {
     return Parser
       .alternative([
+        self.printParser.topLevel,
         Command.parser.fmap(CLI.run).topLevel,
         Help.parser.fmap(CLI.show).topLevel,
       ])
       .withExpandedDesc
       .sectionize(
         "fbsimctl", "Help",
-        "fbsimctl is a Mac OS X library for managing and manipulating iOS Simulators")
+        "fbsimctl is a Mac OS X library for managing and manipulating iOS Simulators"
+      )
+  }
+
+  private static var printParser: Parser<CLI> {
+    return Parser
+      .ofString("print", NSNull())
+      .sequence(Action.parser)
+      .fmap(CLI.print)
   }
 }
 
@@ -537,10 +546,10 @@ extension Action : Parsable {
   }
 
   static var bootParser: Parser<Action> {
-    return Parser<FBSimulatorBootConfiguration?>
+    return Parser<FBSimulatorBootConfiguration>
       .ofCommandWithArg(
         EventName.boot.rawValue,
-        FBSimulatorBootConfigurationParser.parser.optional()
+        FBSimulatorBootConfigurationParser.parser.fallback(FBSimulatorBootConfiguration.default())
       )
       .fmap(Action.boot)
       .sectionize("boot", "Action: Boot", "")

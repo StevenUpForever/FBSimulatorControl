@@ -224,8 +224,8 @@ struct ListenRunner : Runner, ActionPerformer {
 
   func run() -> CommandResult {
     do {
-      let interface = self.context.value.0
-      let relay = SynchronousRelay(relay: try self.makeBaseRelay(), reporter: self.context.reporter, handle: interface.handle) {
+      let (interface, baseRelay, awaitable) = try self.makeBaseRelay()
+      let relay = SynchronousRelay(relay: baseRelay, reporter: self.context.reporter, awaitable: awaitable) {
         self.context.reporter.reportSimple(.listen, .started, interface)
       }
       let result = RelayRunner(relay: relay).run()
@@ -238,21 +238,33 @@ struct ListenRunner : Runner, ActionPerformer {
     }
   }
 
-  func makeBaseRelay() throws -> Relay {
-    let (interface, _) = self.context.value
+  func makeBaseRelay() throws -> (ListenInterface, Relay, FBTerminationAwaitable?) {
+    let (interface, query) = self.context.value
+    let interpreter = self.context.reporter.interpreter
     var relays: [Relay] = []
+    var awaitable: FBTerminationAwaitable? = nil
+
+    if interface.isEmptyListen {
+      awaitable = interface.handle as? FBTerminationAwaitable
+    }
     if let httpPort = interface.http {
       relays.append(HttpRelay(portNumber: httpPort, performer: self))
     }
     if interface.stdin {
-      let commandBuffer = CommandBuffer(performer: self, reporter: self.context.reporter)
-      relays.append(FileHandleRelay(commandBuffer: commandBuffer))
+      let target = try self.context.querySingleSimulator(query)
+      let bridge = ActionReaderDelegateBridge(interpreter: interpreter)
+      let reader = FBiOSActionReader.fileReader(for: target, delegate: bridge, read: FileHandle.standardInput, write: FileHandle.standardOutput)
+      awaitable = reader
+      relays.append(reader)
     }
     if let hidPort = interface.hid {
-      let hid = try self.context.querySingleSimulator(self.context.value.1).connect().connectToHID()
-      relays.append(HIDSocketRelay(portNumber: hidPort, hid: hid))
+      let target = try self.context.querySingleSimulator(query)
+      let bridge = ActionReaderDelegateBridge(interpreter: interpreter)
+      let reader = FBiOSActionReader.socketReader(for: target, delegate: bridge, port: hidPort)
+      awaitable = reader
+      relays.append(reader)
     }
-    return CompositeRelay(relays: relays)
+    return (interface, CompositeRelay(relays: relays), awaitable)
   }
 
   func runnerContext(_ reporter: EventReporter) -> iOSRunnerContext<()> {

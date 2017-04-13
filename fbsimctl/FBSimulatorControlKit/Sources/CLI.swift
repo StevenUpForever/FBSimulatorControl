@@ -31,8 +31,28 @@ public struct Help {
   let error: (Error & CustomStringConvertible)?
   let command: Command?
 }
+extension Help : Equatable {}
+public func == (left: Help, right: Help) -> Bool {
+  return left.outputOptions == right.outputOptions && left.command == right.command
+}
 
 public enum CLI {
-  case show(Help)
+  case print(Action)
   case run(Command)
+  case show(Help)
 }
+
+extension CLI : Equatable {}
+public func == (left: CLI, right: CLI) -> Bool {
+  switch (left, right) {
+    case (.show(let leftHelp), .show(let rightHelp)):
+      return leftHelp == rightHelp
+    case (.run(let leftCommand), .run(let rightCommand)):
+      return leftCommand == rightCommand
+    case (.print(let leftAction), .print(let rightAction)):
+      return leftAction == rightAction
+    default:
+      return false
+  }
+}
+

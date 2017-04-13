@@ -74,20 +74,16 @@ public enum FileOutput {
  */
 public enum Action {
   case approve([String])
-  case boot(FBSimulatorBootConfiguration?)
   case clearKeychain(String?)
   case config
+  case core(FBiOSTargetAction)
   case create(CreationSpecification)
   case delete
   case diagnose(FBDiagnosticQuery, DiagnosticFormat)
-  case focus
   case erase
-  case hid(FBSimulatorHIDEvent)
+  case focus
   case install(String, Bool)
   case keyboardOverride
-  case launchAgent(FBAgentLaunchConfiguration)
-  case launchApp(FBApplicationLaunchConfiguration)
-  case launchXCTest(FBTestLaunchConfiguration)
   case list
   case listApps
   case listDeviceSets
@@ -105,6 +101,26 @@ public enum Action {
   case uninstall(String)
   case upload([FBDiagnostic])
   case watchdogOverride([String], TimeInterval)
+
+  static func boot(_ configuration: FBSimulatorBootConfiguration) -> Action {
+    return self.core(configuration)
+  }
+
+  static func hid(_ event: FBSimulatorHIDEvent) -> Action {
+    return self.core(event)
+  }
+
+  static func launchApp(_ appLaunch: FBApplicationLaunchConfiguration) -> Action {
+    return self.core(appLaunch)
+  }
+
+  static func launchAgent(_ agentLaunch: FBAgentLaunchConfiguration) -> Action {
+    return self.core(agentLaunch)
+  }
+
+  static func launchXCTest(_ testLaunch: FBTestLaunchConfiguration) -> Action {
+    return self.core(testLaunch.withUITesting(true))
+  }
 }
 
 /**
@@ -198,6 +214,8 @@ extension FBTerminationHandleType {
         return "Streaming Video"
       case FBTerminationHandleType.testOperation:
         return "Test Operation"
+      case FBTerminationHandleType.actionReader:
+        return "Action Reader"
       default:
         return nil
     }
@@ -257,7 +275,7 @@ extension ListenInterface : EventReporterSubject {
     return self.handle?.type.listenDescription
   }}
 
-  private var isEmptyListen: Bool { get {
+  var isEmptyListen: Bool { get {
     return self.stdin == false && self.http == nil && self.hid == nil
   }}
 }
@@ -326,12 +344,12 @@ public func == (left: Action, right: Action) -> Bool {
   switch (left, right) {
   case (.approve(let leftBundleIDs), .approve(let rightBundleIDs)):
     return leftBundleIDs == rightBundleIDs
-  case (.boot(let leftConfiguration), .boot(let rightConfiguration)):
-    return leftConfiguration == rightConfiguration
   case (.clearKeychain(let leftBundleID), .clearKeychain(let rightBundleID)):
     return leftBundleID == rightBundleID
   case (.config, .config):
     return true
+  case (.core(let leftAction), .core(let rightAction)):
+    return leftAction.isEqual(rightAction)
   case (.create(let leftSpecification), .create(let rightSpecification)):
     return leftSpecification == rightSpecification
   case (.delete, .delete):
@@ -342,18 +360,10 @@ public func == (left: Action, right: Action) -> Bool {
     return true
   case (.focus, .focus):
     return true
-  case (.hid(let leftEvent), .hid(let rightEvent)):
-    return leftEvent == rightEvent
   case (.install(let leftApp, let leftSign), .install(let rightApp, let rightSign)):
     return leftApp == rightApp && leftSign == rightSign
   case (.keyboardOverride, .keyboardOverride):
     return true
-  case (.launchAgent(let leftLaunch), .launchAgent(let rightLaunch)):
-    return leftLaunch == rightLaunch
-  case (.launchApp(let leftLaunch), .launchApp(let rightLaunch)):
-    return leftLaunch == rightLaunch
-  case (.launchXCTest(let leftConfiguration), .launchXCTest(let rightConfiguration)):
-    return leftConfiguration == rightConfiguration
   case (.list, .list):
     return true
   case (.listApps, .listApps):
@@ -398,12 +408,12 @@ extension Action {
     switch self {
     case .approve(let bundleIDs):
       return (.approve, StringsSubject(bundleIDs))
-    case .boot:
-      return (.boot, nil)
     case .clearKeychain(let bundleID):
       return (.clearKeychain, bundleID)
     case .config:
       return (.config, nil)
+    case .core(let action):
+      return (action.eventName, ControlCoreSubject(action as! ControlCoreValue))
     case .create:
       return (.create, nil)
     case .delete:
@@ -414,18 +424,10 @@ extension Action {
       return (.erase, nil)
     case .focus:
       return (.focus, nil)
-    case .hid(let event):
-      return (.hid, ControlCoreSubject(event))
     case .install:
       return (.install, nil)
     case .keyboardOverride:
       return (.keyboardOverride, nil)
-    case .launchAgent(let launch):
-      return (.launch, ControlCoreSubject(launch))
-    case .launchApp(let launch):
-      return (.launch, ControlCoreSubject(launch))
-    case .launchXCTest(let configuration):
-        return (.launchXCTest, ControlCoreSubject(configuration))
     case .list:
         return (.list, nil)
     case .listApps:

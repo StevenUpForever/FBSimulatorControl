@@ -73,11 +73,6 @@ struct SimulatorActionRunner : Runner {
       return iOSTargetRunner.simple(reporter, .approve, StringsSubject(bundleIDs)) {
         try simulator.authorizeLocationSettings(bundleIDs)
       }
-    case .boot(let maybeBootConfiguration):
-      let bootConfiguration = maybeBootConfiguration ?? FBSimulatorBootConfiguration.default()
-      return iOSTargetRunner.simple(reporter, .boot, ControlCoreSubject(bootConfiguration)) {
-        try simulator.bootSimulator(bootConfiguration)
-      }
     case .clearKeychain(let maybeBundleID):
       return iOSTargetRunner.simple(reporter, .clearKeychain, ControlCoreSubject(simulator)) {
         if let bundleID = maybeBundleID {
@@ -97,21 +92,9 @@ struct SimulatorActionRunner : Runner {
       return iOSTargetRunner.simple(reporter, .focus, ControlCoreSubject(simulator)) {
         try simulator.focus()
       }
-    case .hid(let event):
-      return iOSTargetRunner.simple(reporter, .hid, ControlCoreSubject(simulator)) {
-        try event.perform(on: simulator.connect().connectToHID())
-      }
     case .keyboardOverride:
       return iOSTargetRunner.simple(reporter, .keyboardOverride, ControlCoreSubject(simulator)) {
         try simulator.setupKeyboard()
-      }
-    case .launchAgent(let launch):
-      return iOSTargetRunner.simple(reporter, .launch, ControlCoreSubject(launch)) {
-        try simulator.launchAgent(launch)
-      }
-    case .launchApp(let launch):
-      return iOSTargetRunner.simple(reporter, .launch, ControlCoreSubject(launch)) {
-        try simulator.launchApplication(launch)
       }
     case .open(let url):
       return iOSTargetRunner.simple(reporter, .open, url.bridgedAbsoluteString) {
