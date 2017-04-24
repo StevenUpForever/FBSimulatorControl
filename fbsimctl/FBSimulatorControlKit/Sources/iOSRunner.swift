@@ -65,15 +65,10 @@ struct iOSActionProvider {
             try target.stopRecording()
           }
       }
-    case .stream(let maybeOutput):
+    case .stream(let output, let type):
       return iOSTargetRunner.handled(reporter, .stream, ControlCoreSubject(target as! ControlCoreValue)) {
-        let stream = try target.createStream()
-        if let output = maybeOutput {
-          try stream.startStreaming(output.makeWriter())
-        } else {
-          let attributes = try stream.streamAttributes()
-          reporter.reportValue(.stream, .discrete, attributes)
-        }
+        let stream = try target.createStream(with: type)
+        try stream.startStreaming(output.makeWriter())
         return stream
       }
     case .terminate(let bundleID):
