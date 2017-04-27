@@ -65,8 +65,8 @@ dtrace:::BEGIN
     offsetof(IndigoDigitizerPayload, field1),
     offsetof(IndigoDigitizerPayload, field2),
     offsetof(IndigoDigitizerPayload, field3),
-    offsetof(IndigoDigitizerPayload, field4),
-    offsetof(IndigoDigitizerPayload, field5)
+    offsetof(IndigoDigitizerPayload, xRatio),
+    offsetof(IndigoDigitizerPayload, yRatio)
   );
   indigohid_registration_port = 0;
   indigohid_reply_port = 0;
@@ -132,6 +132,9 @@ pid$target::mach_msg_send:entry
   self->buttonEventSource = (unsigned int *) NULL;
   self->buttonEventType = (unsigned int *) NULL;
   self->keyCode = (unsigned int *) NULL;
+  self->touchDirection = (unsigned int *) NULL;
+  self->touchX = (unsigned int *) NULL;
+  self->touchY = (unsigned int *) NULL;
 }
 
 /* If it's an Indigo Message, copy the value in. */
@@ -156,6 +159,27 @@ pid$target::mach_msg_send:entry
 {
   self->buttonEventSource = ((unsigned int *) (((uintptr_t) self->indigo) + ((uintptr_t) 0x30)));
   self->buttonEventType = ((unsigned int *) (((uintptr_t) self->indigo) + ((uintptr_t) 0x34)));
+}
+
+/* Extract the Touch from the Indigo Message */
+pid$target::mach_msg_send:entry
+/ self->indigo != NULL && self->indigo->eventType == IndigoEventTypeTouch /
+{
+  self->touchDirection = ((unsigned int *) (((uintptr_t) self->indigo) + ((uintptr_t) 0x64)));
+  self->touchX = ((unsigned int *) (((uintptr_t) self->indigo) + ((uintptr_t) 0x3c)));
+  self->touchY = ((unsigned int *) (((uintptr_t) self->indigo) + ((uintptr_t) 0x44)));
+}
+
+pid$target::mach_msg_send:entry
+/ self->touchDirection != NULL && *(self->touchDirection) == 0x1 /
+{
+  printf("Touch Down %d %d", *self->touchX, *self->touchY)
+}
+
+pid$target::mach_msg_send:entry
+/ self->touchDirection != NULL && *(self->touchDirection) == 0x0 /
+{
+  printf("Touch Up %d %d", *self->touchX, *self->touchY)
 }
 
 pid$target::mach_msg_send:entry

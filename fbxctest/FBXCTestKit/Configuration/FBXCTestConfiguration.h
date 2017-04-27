@@ -9,12 +9,15 @@
 
 #import <Foundation/Foundation.h>
 
+#import <FBControlCore/FBControlCore.h>
+
 NS_ASSUME_NONNULL_BEGIN
 
 @class FBSimulator;
 @class FBXCTestDestination;
 @class FBXCTestLogger;
 @class FBXCTestShimConfiguration;
+@class FBXCTestContext;
 
 @protocol FBControlCoreLogger;
 @protocol FBXCTestReporter;
@@ -22,47 +25,54 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  The Base Configuration for all tests.
  */
-@interface FBXCTestConfiguration : NSObject
+@interface FBXCTestConfiguration : NSObject <NSCopying, FBJSONSerializable, FBJSONDeserializable>
 
 /**
- Creates and loads a configuration.
-
- @param arguments the Arguments to the fbxctest process
- @param environment environment additions for the process under test.
- @param workingDirectory the Working Directory to use.
- @param reporter a reporter to inject.
- @param logger the logger to inject.
- @param error an error out for any error that occurs
- @return a new test run configuration.
+ The Default Initializer.
+ This should not be called directly.
  */
-+ (nullable instancetype)configurationFromArguments:(NSArray<NSString *> *)arguments processUnderTestEnvironment:(NSDictionary<NSString *, NSString *> *)environment workingDirectory:(NSString *)workingDirectory reporter:(nullable id<FBXCTestReporter>)reporter logger:(FBXCTestLogger *)logger error:(NSError **)error;
+- (instancetype)initWithDestination:(FBXCTestDestination *)destination shims:(nullable FBXCTestShimConfiguration *)shims environment:(NSDictionary<NSString *, NSString *> *)environment workingDirectory:(NSString *)workingDirectory testBundlePath:(NSString *)testBundlePath waitForDebugger:(BOOL)waitForDebugger timeout:(NSTimeInterval)timeout runnerAppPath:(nullable NSString *)runnerAppPath testFilter:(nullable NSString *)testFilter;
 
 /**
- Creates and loads a configuration.
-
- @param arguments the Arguments to the fbxctest process
- @param environment environment additions for the process under test.
- @param workingDirectory the Working Directory to use.
- @param reporter a reporter to inject.
- @param logger the logger to inject.
- @Param timeout the timeout of the test.
- @param error an error out for any error that occurs
- @return a new test run configuration.
+ The Destination Runtime to run against.
  */
-+ (nullable instancetype)configurationFromArguments:(NSArray<NSString *> *)arguments processUnderTestEnvironment:(NSDictionary<NSString *, NSString *> *)environment workingDirectory:(NSString *)workingDirectory reporter:(nullable id<FBXCTestReporter>)reporter logger:(FBXCTestLogger *)logger timeout:(NSTimeInterval)timeout error:(NSError **)error;
+@property (nonatomic, copy, readonly) FBXCTestDestination *destination;
 
-@property (nonatomic, strong, readonly, nullable) FBXCTestLogger *logger;
-@property (nonatomic, strong, readonly) id<FBXCTestReporter> reporter;
-@property (nonatomic, strong, readonly) FBXCTestDestination *destination;
+/**
+ The Shims to use for relevant test runs.
+ */
+@property (nonatomic, copy, nullable, readonly) FBXCTestShimConfiguration *shims;
 
+/**
+ The Environment Variables for the Process-Under-Test that is launched.
+ */
 @property (nonatomic, copy, readonly) NSDictionary<NSString *, NSString *> *processUnderTestEnvironment;
+
+/**
+ The Directory to use for files required during the execution of the test run.
+ */
 @property (nonatomic, copy, readonly) NSString *workingDirectory;
+
+/**
+ The Test Bundle to Execute.
+ */
 @property (nonatomic, copy, readonly) NSString *testBundlePath;
+
+/**
+ The Type of the Test Bundle.
+ */
+@property (nonatomic, copy, readonly) NSString *testType;
+
+/**
+ YES if the test execution should pause on launch, waiting for a debugger to attach.
+ NO otherwise.
+ */
 @property (nonatomic, assign, readonly) BOOL waitForDebugger;
 
+/**
+ The Timeout to wait for the test execution to finish.
+ */
 @property (nonatomic, assign, readonly) NSTimeInterval testTimeout;
-
-@property (nonatomic, copy, nullable, readonly) FBXCTestShimConfiguration *shims;
 
 /**
  Locates the expected Installation Root.
@@ -86,6 +96,11 @@ NS_ASSUME_NONNULL_BEGIN
  */
 @interface FBListTestConfiguration : FBXCTestConfiguration
 
+/**
+ The Designated Initializer.
+ */
++ (instancetype)configurationWithDestination:(FBXCTestDestination *)destination shims:(FBXCTestShimConfiguration *)shims environment:(NSDictionary<NSString *, NSString *> *)environment workingDirectory:(NSString *)workingDirectory testBundlePath:(NSString *)testBundlePath waitForDebugger:(BOOL)waitForDebugger timeout:(NSTimeInterval)timeout;
+
 @end
 
 /**
@@ -98,6 +113,11 @@ NS_ASSUME_NONNULL_BEGIN
  */
 @property (nonatomic, copy, readonly) NSString *runnerAppPath;
 
+/**
+ The Designated Initializer.
+ */
++ (instancetype)configurationWithDestination:(FBXCTestDestination *)destination environment:(NSDictionary<NSString *, NSString *> *)environment workingDirectory:(NSString *)workingDirectory testBundlePath:(NSString *)testBundlePath waitForDebugger:(BOOL)waitForDebugger timeout:(NSTimeInterval)timeout runnerAppPath:(NSString *)runnerAppPath;
+
 @end
 
 /**
@@ -109,6 +129,11 @@ NS_ASSUME_NONNULL_BEGIN
  The Filter for Logic Tests.
  */
 @property (nonatomic, copy, nullable, readonly) NSString *testFilter;
+
+/**
+ The Designated Initializer.
+ */
++ (instancetype)configurationWithDestination:(FBXCTestDestination *)destination shims:(FBXCTestShimConfiguration *)shims environment:(NSDictionary<NSString *, NSString *> *)environment workingDirectory:(NSString *)workingDirectory testBundlePath:(NSString *)testBundlePath waitForDebugger:(BOOL)waitForDebugger timeout:(NSTimeInterval)timeout testFilter:(nullable NSString *)testFilter;
 
 @end
 

@@ -435,9 +435,9 @@ extension ListenInterface : Parsable {
   public static var parser: Parser<ListenInterface> {
     return Parser<ListenInterface>
       .accumulate(0, [
-        self.httpParser,
         self.stdinParser,
-        self.hidParser,
+        self.httpParser,
+        self.actionSocketParser,
       ])
   }
 
@@ -452,9 +452,9 @@ extension ListenInterface : Parsable {
       .fmap { ListenInterface(stdin: false, http: $0, hid: nil, handle: nil) }
   }
 
-  static var hidParser: Parser<ListenInterface> {
+  static var actionSocketParser: Parser<ListenInterface> {
     return Parser<ListenInterface>
-      .ofFlagWithArg("hid", portParser, "The HID Port to listen on")
+      .ofFlagWithArg("socket", portParser, "The Action Socket Port to listen on")
       .fmap { ListenInterface(stdin: false, http: nil, hid: $0, handle: nil) }
   }
 
@@ -771,21 +771,10 @@ extension Action : Parsable {
   }
 
   static var streamParser: Parser<Action> {
-    let typeParsers: [Parser<FBBitmapStreamType>] = [
-      Parser<FBBitmapStreamType>
-        .ofFlag("h264", .H264, "Output in h264 format."),
-      Parser<FBBitmapStreamType>
-        .ofFlag("bgra", .BGRA, "Output in BGRA format."),
-    ]
-    let typeAlternativeParser =
-      Parser
-        .alternative(typeParsers)
-        .fallback(.BGRA)
-
     return Parser
       .ofTwoSequenced(
-        Parser.ofCommandWithArg(EventName.stream.rawValue, FileOutput.parser),
-        typeAlternativeParser
+        Parser.ofCommandWithArg(EventName.stream.rawValue, FBBitmapStreamConfigurationParser.parser),
+        FileOutput.parser
       )
       .fmap(Action.stream)
   }
@@ -1141,5 +1130,28 @@ struct FBProcessOutputConfigurationParser {
         ""
       ),
     ])
+  }
+}
+
+struct FBBitmapStreamConfigurationParser {
+  public static var parser: Parser<FBBitmapStreamConfiguration> {
+    let typeParser = Parser<FBBitmapStreamEncoding>
+      .alternative([
+        Parser<FBBitmapStreamEncoding>
+          .ofFlag("h264", .H264, "Output in h264 format."),
+        Parser<FBBitmapStreamEncoding>
+          .ofFlag("bgra", .BGRA, "Output in BGRA format."),
+      ])
+      .fallback(.BGRA)
+    let fpsParser = Parser<NSNumber>
+      .ofFlagWithArg("fps", Parser<Int>.ofInt, "Frames Per Second of Output")
+      .fmap { NSNumber(integerLiteral: $0) }
+      .optional()
+    return Parser
+      .ofTwoSequenced(
+        typeParser,
+        fpsParser
+      )
+      .fmap(FBBitmapStreamConfiguration.init)
   }
 }

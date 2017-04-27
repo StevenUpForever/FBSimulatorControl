@@ -13,6 +13,7 @@
 
 @synthesize architecture;
 @synthesize deviceOperator;
+@synthesize logger;
 
 #pragma mark FBDebugDescribeable
 
@@ -75,7 +76,7 @@
   return nil;
 }
 
-- (nullable id<FBBitmapStream>)createStreamWithType:(FBBitmapStreamType)type error:(NSError **)error
+- (nullable id<FBBitmapStream>)createStreamWithConfiguration:(FBBitmapStreamConfiguration *)configuration error:(NSError **)error
 {
   return nil;
 }

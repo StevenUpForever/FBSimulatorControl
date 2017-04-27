@@ -14,23 +14,22 @@
 #import "FBSimulatorError.h"
 #import "FBSimulatorHID.h"
 #import "FBSimulator.h"
-#import "FBSimulator+Connection.h"
 #import "FBSimulatorConnection.h"
 
 FBiOSTargetActionType const FBiOSTargetActionTypeHID = @"hid";
 
-static NSString *const FBSimulatorEventKeyClass = @"class";
-static NSString *const FBSimulatorHIDEventKeyType = @"type";
+static NSString *const KeyEventClass = @"class";
+static NSString *const KeyDirection = @"direction";
 
-static NSString *const FBSimulatorEventClassStringComposite = @"composite";
-static NSString *const FBSimulatorEventClassStringTouch = @"touch";
-static NSString *const FBSimulatorEventClassStringButton = @"button";
-static NSString *const FBSimulatorEventClassStringKeyboard = @"keyboard";
+static NSString *const EventClassStringComposite = @"composite";
+static NSString *const EventClassStringTouch = @"touch";
+static NSString *const EventClassStringButton = @"button";
+static NSString *const EventClassStringKeyboard = @"keyboard";
 
 @interface FBSimulatorHIDEvent ()
 
-+ (FBSimulatorHIDEventType)eventTypeForEventTypeString:(NSString *)eventTypeString;
-+ (NSString *)eventTypeStringFromEventType:(FBSimulatorHIDEventType)eventType;
++ (FBSimulatorHIDDirection)directionFromDirectionString:(NSString *)DirectionString;
++ (NSString *)directionStringFromDirection:(FBSimulatorHIDDirection)Direction;
 
 @end
 
@@ -42,7 +41,7 @@ static NSString *const FBSimulatorEventClassStringKeyboard = @"keyboard";
 
 @implementation FBSimulatorHIDEvent_Composite
 
-static NSString *const FBSimulatorEventKeyEvents = @"events";
+static NSString *const KeyEvents = @"events";
 
 - (instancetype)initWithEvents:(NSArray<FBSimulatorHIDEvent *> *)events
 {
@@ -62,13 +61,13 @@ static NSString *const FBSimulatorEventKeyEvents = @"events";
       describe:@"Expected an input of Dictionary<String, Object>"]
       fail:error];
   }
-  NSString *class = json[FBSimulatorEventKeyClass];
-  if (![class isEqualToString:FBSimulatorEventClassStringComposite]) {
+  NSString *class = json[KeyEventClass];
+  if (![class isEqualToString:EventClassStringComposite]) {
     return [[FBSimulatorError
-      describeFormat:@"Expected %@ to be %@", class, FBSimulatorEventClassStringComposite]
+      describeFormat:@"Expected %@ to be %@", class, EventClassStringComposite]
       fail:error];
   }
-  NSArray<NSDictionary *> *eventsJSON = json[FBSimulatorEventKeyEvents];
+  NSArray<NSDictionary *> *eventsJSON = json[KeyEvents];
   if (![FBCollectionInformation isArrayHeterogeneous:eventsJSON withClass:NSDictionary.class]) {
     return [[FBSimulatorError
       describeFormat:@"Expected %@ to be Array<Dictionary>", class]
@@ -84,8 +83,8 @@ static NSString *const FBSimulatorEventKeyEvents = @"events";
 - (id)jsonSerializableRepresentation
 {
   return @{
-    FBSimulatorEventKeyEvents: [FBSimulatorHIDEvent_Composite eventsJSONFromEvents:self.events],
-    FBSimulatorEventKeyClass: FBSimulatorEventClassStringComposite,
+    KeyEvents: [FBSimulatorHIDEvent_Composite eventsJSONFromEvents:self.events],
+    KeyEventClass: EventClassStringComposite,
   };
 }
 
@@ -143,7 +142,7 @@ static NSString *const FBSimulatorEventKeyEvents = @"events";
 
 @interface FBSimulatorHIDEvent_Touch : FBSimulatorHIDEvent
 
-@property (nonatomic, assign, readonly) FBSimulatorHIDEventType type;
+@property (nonatomic, assign, readonly) FBSimulatorHIDDirection direction;
 @property (nonatomic, assign, readonly) double x;
 @property (nonatomic, assign, readonly) double y;
 
@@ -151,16 +150,16 @@ static NSString *const FBSimulatorEventKeyEvents = @"events";
 
 @implementation FBSimulatorHIDEvent_Touch
 
-static NSString *const FBSimulatorHIDEventKeyX = @"x";
-static NSString *const FBSimulatorHIDEventKeyY = @"y";
+static NSString *const KeyX = @"x";
+static NSString *const KeyY = @"y";
 
-- (instancetype)initWithEventType:(FBSimulatorHIDEventType)type x:(double)x y:(double)y
+- (instancetype)initWithDirection:(FBSimulatorHIDDirection)direction x:(double)x y:(double)y
 {
   self = [super init];
   if (!self) {
     return nil;
   }
-  _type = type;
+  _direction = direction;
   _x = x;
   _y = y;
   return self;
@@ -173,59 +172,59 @@ static NSString *const FBSimulatorHIDEventKeyY = @"y";
       describe:@"Expected an input of Dictionary<String, Object>"]
       fail:error];
   }
-  NSString *class = json[FBSimulatorEventKeyClass];
-  if (![class isEqualToString:FBSimulatorEventClassStringTouch]) {
+  NSString *class = json[KeyEventClass];
+  if (![class isEqualToString:EventClassStringTouch]) {
     return [[FBSimulatorError
-      describeFormat:@"Expected %@ to be %@", class, FBSimulatorEventClassStringTouch]
+      describeFormat:@"Expected %@ to be %@", class, EventClassStringTouch]
       fail:error];
   }
-  NSNumber *x = json[FBSimulatorHIDEventKeyX];
+  NSNumber *x = json[KeyX];
   if (![x isKindOfClass:NSNumber.class]) {
     return [[FBSimulatorError
-      describeFormat:@"Expected %@ for %@ to be a Number", x, FBSimulatorHIDEventKeyX]
+      describeFormat:@"Expected %@ for %@ to be a Number", x, KeyX]
       fail:error];
   }
-  NSNumber *y = json[FBSimulatorHIDEventKeyY];
+  NSNumber *y = json[KeyY];
   if (![y isKindOfClass:NSNumber.class]) {
     return [[FBSimulatorError
-      describeFormat:@"Expected %@ for %@ to be a Number", x, FBSimulatorHIDEventKeyY]
+      describeFormat:@"Expected %@ for %@ to be a Number", x, KeyY]
       fail:error];
   }
-  NSString *typeString = json[FBSimulatorHIDEventKeyType];
+  NSString *typeString = json[KeyDirection];
   if (![typeString isKindOfClass:NSString.class]) {
     return [[FBSimulatorError
-      describeFormat:@"Expected %@ for %@ to be a String", typeString, FBSimulatorHIDEventKeyType]
+      describeFormat:@"Expected %@ for %@ to be a String", typeString, KeyDirection]
       fail:error];
   }
-  FBSimulatorHIDEventType type = [FBSimulatorHIDEvent eventTypeForEventTypeString:typeString];
+  FBSimulatorHIDDirection type = [FBSimulatorHIDEvent directionFromDirectionString:typeString];
   if (type < 1) {
     return [[FBSimulatorError
       describeFormat:@"%@ is not a valid event type", typeString]
       fail:error];
   }
-  return [[self alloc] initWithEventType:type x:x.unsignedIntegerValue y:y.unsignedIntegerValue];
+  return [[self alloc] initWithDirection:type x:x.unsignedIntegerValue y:y.unsignedIntegerValue];
 }
 
 - (id)jsonSerializableRepresentation
 {
   return @{
-    FBSimulatorHIDEventKeyX: @(self.x),
-    FBSimulatorHIDEventKeyY: @(self.y),
-    FBSimulatorHIDEventKeyType: [FBSimulatorHIDEvent eventTypeStringFromEventType:self.type],
-    FBSimulatorEventKeyClass: FBSimulatorEventClassStringTouch,
+    KeyX: @(self.x),
+    KeyY: @(self.y),
+    KeyDirection: [FBSimulatorHIDEvent directionStringFromDirection:self.direction],
+    KeyEventClass: EventClassStringTouch,
   };
 }
 
 - (BOOL)performOnHID:(FBSimulatorHID *)hid error:(NSError **)error
 {
-  return [hid sendTouchWithType:self.type x:self.x y:self.y error:error];
+  return [hid sendTouchWithType:self.direction x:self.x y:self.y error:error];
 }
 
 - (NSString *)description
 {
   return [NSString stringWithFormat:
     @"Touch %@ at (%lu,%lu)",
-    [FBSimulatorHIDEvent eventTypeStringFromEventType:self.type],
+    [FBSimulatorHIDEvent directionStringFromDirection:self.direction],
     (unsigned long)self.x,
     (unsigned long)self.y
   ];
@@ -236,33 +235,33 @@ static NSString *const FBSimulatorHIDEventKeyY = @"y";
   if (![event isKindOfClass:self.class]) {
     return NO;
   }
-  return self.type == event.type && self.x == event.x && self.y == event.y;
+  return self.direction == event.direction && self.x == event.x && self.y == event.y;
 }
 
 - (NSUInteger)hash
 {
-  return self.type | ((NSUInteger) self.x ^ (NSUInteger) self.y);
+  return self.direction | ((NSUInteger) self.x ^ (NSUInteger) self.y);
 }
 
 @end
 
-static NSString *const FBSimulatorHIDEventKeyButton = @"button";
-static NSString *const FBSimulatorHIDButtonStringApplePay = @"apple_pay";
-static NSString *const FBSimulatorHIDButtonStringHomeButton = @"home";
-static NSString *const FBSimulatorHIDButtonStringLock = @"lock";
-static NSString *const FBSimulatorHIDButtonStringSideButton = @"side";
-static NSString *const FBSimulatorHIDButtonStringSiri = @"siri";
+static NSString *const KeyButton = @"button";
+static NSString *const ButtonApplePay = @"apple_pay";
+static NSString *const ButtonHomeButton = @"home";
+static NSString *const ButtonLock = @"lock";
+static NSString *const ButtonSideButton = @"side";
+static NSString *const ButtonSiri = @"siri";
 
 @interface FBSimulatorHIDEvent_Button : FBSimulatorHIDEvent
 
-@property (nonatomic, assign, readonly) FBSimulatorHIDEventType type;
+@property (nonatomic, assign, readonly) FBSimulatorHIDDirection type;
 @property (nonatomic, assign, readonly) FBSimulatorHIDButton button;
 
 @end
 
 @implementation FBSimulatorHIDEvent_Button
 
-- (instancetype)initWithEventType:(FBSimulatorHIDEventType)type button:(FBSimulatorHIDButton)button
+- (instancetype)initWithDirection:(FBSimulatorHIDDirection)type button:(FBSimulatorHIDButton)button
 {
   self = [super init];
   if (!self) {
@@ -281,50 +280,50 @@ static NSString *const FBSimulatorHIDButtonStringSiri = @"siri";
       describe:@"Expected an input of Dictionary<String, String>"]
       fail:error];
   }
-  NSString *class = json[FBSimulatorEventKeyClass];
-  if (![class isEqualToString:FBSimulatorEventClassStringButton]) {
+  NSString *class = json[KeyEventClass];
+  if (![class isEqualToString:EventClassStringButton]) {
     return [[FBSimulatorError
-      describeFormat:@"Expected %@ to be %@", class, FBSimulatorEventClassStringButton]
+      describeFormat:@"Expected %@ to be %@", class, EventClassStringButton]
       fail:error];
   }
-  NSString *buttonString = json[FBSimulatorHIDEventKeyButton];
+  NSString *buttonString = json[KeyButton];
   if (![buttonString isKindOfClass:NSString.class]) {
     return [[FBSimulatorError
-      describeFormat:@"Expected %@ for %@ to be a String", buttonString, FBSimulatorHIDEventKeyButton]
+      describeFormat:@"Expected %@ for %@ to be a String", buttonString, KeyButton]
       fail:error];
   }
   FBSimulatorHIDButton button = [self buttonFromButtonString:buttonString];
   if (button < 1) {
     return [[FBSimulatorError
-      describeFormat:@"Button %@ for %@ is not a valid button type", buttonString, FBSimulatorHIDEventKeyButton]
+      describeFormat:@"Button %@ for %@ is not a valid button type", buttonString, KeyButton]
       fail:error];
   }
-  NSString *typeString = json[FBSimulatorHIDEventKeyType];
+  NSString *typeString = json[KeyDirection];
   if (![typeString isKindOfClass:NSString.class]) {
     return [[FBSimulatorError
-      describeFormat:@"Expected %@ for %@ to be a String", typeString, FBSimulatorHIDEventKeyType]
+      describeFormat:@"Expected %@ for %@ to be a String", typeString, KeyDirection]
       fail:error];
   }
-  FBSimulatorHIDEventType type = [FBSimulatorHIDEvent eventTypeForEventTypeString:typeString];
+  FBSimulatorHIDDirection type = [FBSimulatorHIDEvent directionFromDirectionString:typeString];
   if (type < 1) {
     return [[FBSimulatorError
       describeFormat:@"%@ is not a valid event type", typeString]
       fail:error];
   }
-  return [[self alloc] initWithEventType:type button:button];
+  return [[self alloc] initWithDirection:type button:button];
 }
 
 - (id)jsonSerializableRepresentation
 {
   return @{
-    FBSimulatorHIDEventKeyButton: [FBSimulatorHIDEvent_Button buttonStringFromButton:self.button],
-    FBSimulatorHIDEventKeyType: [FBSimulatorHIDEvent eventTypeStringFromEventType:self.type],
-    FBSimulatorEventKeyClass: FBSimulatorEventClassStringButton,
+    KeyButton: [FBSimulatorHIDEvent_Button buttonStringFromButton:self.button],
+    KeyDirection: [FBSimulatorHIDEvent directionStringFromDirection:self.type],
+    KeyEventClass: EventClassStringButton,
   };
 }
 - (BOOL)performOnHID:(FBSimulatorHID *)hid error:(NSError **)error
 {
-  return [hid sendButtonEventWithType:self.type button:self.button error:error];
+  return [hid sendButtonEventWithDirection:self.type button:self.button error:error];
 }
 
 - (NSString *)description
@@ -332,7 +331,7 @@ static NSString *const FBSimulatorHIDButtonStringSiri = @"siri";
   return [NSString stringWithFormat:
     @"Button %@ %@",
     [FBSimulatorHIDEvent_Button buttonStringFromButton:self.button],
-    [FBSimulatorHIDEvent eventTypeStringFromEventType:self.type]
+    [FBSimulatorHIDEvent directionStringFromDirection:self.type]
   ];
 }
 
@@ -353,15 +352,15 @@ static NSString *const FBSimulatorHIDButtonStringSiri = @"siri";
 {
   switch (button) {
     case FBSimulatorHIDButtonApplePay:
-      return FBSimulatorHIDButtonStringApplePay;
+      return ButtonApplePay;
     case FBSimulatorHIDButtonHomeButton:
-      return FBSimulatorHIDButtonStringHomeButton;
+      return ButtonHomeButton;
     case FBSimulatorHIDButtonLock:
-      return FBSimulatorHIDButtonStringLock;
+      return ButtonLock;
     case FBSimulatorHIDButtonSideButton:
-      return FBSimulatorHIDButtonStringSideButton;
+      return ButtonSideButton;
     case FBSimulatorHIDButtonSiri:
-      return FBSimulatorHIDButtonStringSiri;
+      return ButtonSiri;
     default:
       return nil;
   }
@@ -369,19 +368,19 @@ static NSString *const FBSimulatorHIDButtonStringSiri = @"siri";
 
 + (FBSimulatorHIDButton)buttonFromButtonString:(NSString *)buttonString
 {
-  if ([buttonString isEqualToString:FBSimulatorHIDButtonStringApplePay]) {
+  if ([buttonString isEqualToString:ButtonApplePay]) {
     return FBSimulatorHIDButtonApplePay;
   }
-  if ([buttonString isEqualToString:FBSimulatorHIDButtonStringHomeButton]) {
+  if ([buttonString isEqualToString:ButtonHomeButton]) {
     return FBSimulatorHIDButtonHomeButton;
   }
-  if ([buttonString isEqualToString:FBSimulatorHIDButtonStringSideButton]) {
+  if ([buttonString isEqualToString:ButtonSideButton]) {
     return FBSimulatorHIDButtonSideButton;
   }
-  if ([buttonString isEqualToString:FBSimulatorHIDButtonStringSiri]) {
+  if ([buttonString isEqualToString:ButtonSiri]) {
     return FBSimulatorHIDButtonSiri;
   }
-  if ([buttonString isEqualToString:FBSimulatorHIDButtonStringLock]) {
+  if ([buttonString isEqualToString:ButtonLock]) {
     return FBSimulatorHIDButtonLock;
   }
   return 0;
@@ -389,25 +388,25 @@ static NSString *const FBSimulatorHIDButtonStringSiri = @"siri";
 
 @end
 
-static NSString *const FBSimulatorHIDEventKeyKeycode = @"keycode";
+static NSString *const KeyKeycode = @"keycode";
 
 @interface FBSimulatorHIDEvent_Keyboard : FBSimulatorHIDEvent
 
-@property (nonatomic, assign, readonly) FBSimulatorHIDEventType type;
+@property (nonatomic, assign, readonly) FBSimulatorHIDDirection direction;
 @property (nonatomic, assign, readonly) unsigned int keyCode;
 
 @end
 
 @implementation FBSimulatorHIDEvent_Keyboard
 
-- (instancetype)initWithEventType:(FBSimulatorHIDEventType)type keyCode:(unsigned int)keyCode
+- (instancetype)initWithDirection:(FBSimulatorHIDDirection)direction keyCode:(unsigned int)keyCode
 {
   self = [super init];
   if (!self) {
     return nil;
   }
 
-  _type = type;
+  _direction = direction;
   _keyCode = keyCode;
   return self;
 }
@@ -419,44 +418,44 @@ static NSString *const FBSimulatorHIDEventKeyKeycode = @"keycode";
       describe:@"Expected an input of Dictionary<String, Object>"]
       fail:error];
   }
-  NSString *class = json[FBSimulatorEventKeyClass];
-  if (![class isEqualToString:FBSimulatorEventClassStringKeyboard]) {
+  NSString *class = json[KeyEventClass];
+  if (![class isEqualToString:EventClassStringKeyboard]) {
     return [[FBSimulatorError
-      describeFormat:@"Expected %@ to be %@", class, FBSimulatorEventClassStringKeyboard]
+      describeFormat:@"Expected %@ to be %@", class, EventClassStringKeyboard]
       fail:error];
   }
-  NSNumber *keycode = json[FBSimulatorHIDEventKeyKeycode];
+  NSNumber *keycode = json[KeyKeycode];
   if (![keycode isKindOfClass:NSNumber.class]) {
     return [[FBSimulatorError
-      describeFormat:@"Expected %@ for %@ to be a Number", keycode, FBSimulatorHIDEventKeyKeycode]
+      describeFormat:@"Expected %@ for %@ to be a Number", keycode, KeyKeycode]
       fail:error];
   }
-  NSString *typeString = json[FBSimulatorHIDEventKeyType];
+  NSString *typeString = json[KeyDirection];
   if (![typeString isKindOfClass:NSString.class]) {
     return [[FBSimulatorError
-      describeFormat:@"Expected %@ for %@ to be a String", typeString, FBSimulatorHIDEventKeyType]
+      describeFormat:@"Expected %@ for %@ to be a String", typeString, KeyDirection]
       fail:error];
   }
-  FBSimulatorHIDEventType type = [FBSimulatorHIDEvent eventTypeForEventTypeString:typeString];
+  FBSimulatorHIDDirection type = [FBSimulatorHIDEvent directionFromDirectionString:typeString];
   if (type < 1) {
     return [[FBSimulatorError
       describeFormat:@"%@ is not a valid event type", typeString]
       fail:error];
   }
-  return [[self alloc] initWithEventType:type keyCode:keycode.unsignedIntValue];
+  return [[self alloc] initWithDirection:type keyCode:keycode.unsignedIntValue];
 }
 
 - (id)jsonSerializableRepresentation
 {
   return @{
-    FBSimulatorHIDEventKeyKeycode: @(self.keyCode),
-    FBSimulatorHIDEventKeyType: [FBSimulatorHIDEvent eventTypeStringFromEventType:self.type],
-    FBSimulatorEventKeyClass: FBSimulatorEventClassStringKeyboard,
+    KeyKeycode: @(self.keyCode),
+    KeyDirection: [FBSimulatorHIDEvent directionStringFromDirection:self.direction],
+    KeyEventClass: EventClassStringKeyboard,
   };
 }
 - (BOOL)performOnHID:(FBSimulatorHID *)hid error:(NSError **)error
 {
-  return [hid sendKeyboardEventWithType:self.type keyCode:self.keyCode error:error];
+  return [hid sendKeyboardEventWithDirection:self.direction keyCode:self.keyCode error:error];
 }
 
 - (NSString *)description
@@ -464,7 +463,7 @@ static NSString *const FBSimulatorHIDEventKeyKeycode = @"keycode";
   return [NSString stringWithFormat:
     @"Keyboard Code=%d %@",
     self.keyCode,
-    [FBSimulatorHIDEvent eventTypeStringFromEventType:self.type]
+    [FBSimulatorHIDEvent directionStringFromDirection:self.direction]
   ];
 }
 
@@ -473,12 +472,12 @@ static NSString *const FBSimulatorHIDEventKeyKeycode = @"keycode";
   if (![event isKindOfClass:self.class]) {
     return NO;
   }
-  return self.type == event.type && self.keyCode == event.keyCode;
+  return self.direction == event.direction && self.keyCode == event.keyCode;
 }
 
 - (NSUInteger)hash
 {
-  return self.type ^ self.keyCode;
+  return self.direction ^ self.keyCode;
 }
 
 @end
@@ -492,32 +491,32 @@ static NSString *const FBSimulatorHIDEventKeyKeycode = @"keycode";
 
 + (instancetype)touchDownAtX:(double)x y:(double)y
 {
-  return [[FBSimulatorHIDEvent_Touch alloc] initWithEventType:FBSimulatorHIDEventTypeDown x:x y:y];
+  return [[FBSimulatorHIDEvent_Touch alloc] initWithDirection:FBSimulatorHIDDirectionDown x:x y:y];
 }
 
 + (instancetype)touchUpAtX:(double)x y:(double)y
 {
-  return [[FBSimulatorHIDEvent_Touch alloc] initWithEventType:FBSimulatorHIDEventTypeUp x:x y:y];
+  return [[FBSimulatorHIDEvent_Touch alloc] initWithDirection:FBSimulatorHIDDirectionUp x:x y:y];
 }
 
 + (instancetype)buttonDown:(FBSimulatorHIDButton)button
 {
-  return [[FBSimulatorHIDEvent_Button alloc] initWithEventType:FBSimulatorHIDEventTypeDown button:button];
+  return [[FBSimulatorHIDEvent_Button alloc] initWithDirection:FBSimulatorHIDDirectionDown button:button];
 }
 
 + (instancetype)buttonUp:(FBSimulatorHIDButton)button
 {
-  return [[FBSimulatorHIDEvent_Button alloc] initWithEventType:FBSimulatorHIDEventTypeUp button:button];
+  return [[FBSimulatorHIDEvent_Button alloc] initWithDirection:FBSimulatorHIDDirectionUp button:button];
 }
 
 + (instancetype)keyDown:(unsigned int)keyCode
 {
-  return [[FBSimulatorHIDEvent_Keyboard alloc] initWithEventType:FBSimulatorHIDEventTypeDown keyCode:keyCode];
+  return [[FBSimulatorHIDEvent_Keyboard alloc] initWithDirection:FBSimulatorHIDDirectionDown keyCode:keyCode];
 }
 
 + (instancetype)keyUp:(unsigned int)keyCode
 {
-  return [[FBSimulatorHIDEvent_Keyboard alloc] initWithEventType:FBSimulatorHIDEventTypeUp keyCode:keyCode];
+  return [[FBSimulatorHIDEvent_Keyboard alloc] initWithDirection:FBSimulatorHIDDirectionUp keyCode:keyCode];
 }
 
 + (instancetype)tapAtX:(double)x y:(double)y
@@ -551,26 +550,26 @@ static NSString *const FBSimulatorHIDEventKeyKeycode = @"keycode";
       describe:@"Expected an input of Dictionary<String, Object>"]
       fail:error];
   }
-  NSString *class = json[FBSimulatorEventKeyClass];
+  NSString *class = json[KeyEventClass];
   if (![class isKindOfClass:NSString.class]) {
     return [[FBSimulatorError
-      describeFormat:@"%@ for %@ is not a String", class, FBSimulatorEventKeyClass]
+      describeFormat:@"%@ for %@ is not a String", class, KeyEventClass]
       fail:error];
   }
-  if ([class isEqualToString:FBSimulatorEventClassStringComposite]) {
+  if ([class isEqualToString:EventClassStringComposite]) {
     return [FBSimulatorHIDEvent_Composite inflateFromJSON:json error:error];
   }
-  if ([class isEqualToString:FBSimulatorEventClassStringTouch]) {
+  if ([class isEqualToString:EventClassStringTouch]) {
     return [FBSimulatorHIDEvent_Touch inflateFromJSON:json error:error];
   }
-  if ([class isEqualToString:FBSimulatorEventClassStringButton]) {
+  if ([class isEqualToString:EventClassStringButton]) {
     return [FBSimulatorHIDEvent_Button inflateFromJSON:json error:error];
   }
-  if ([class isEqualToString:FBSimulatorEventClassStringKeyboard]) {
+  if ([class isEqualToString:EventClassStringKeyboard]) {
     return [FBSimulatorHIDEvent_Keyboard inflateFromJSON:json error:error];
   }
   return [[FBSimulatorError
-    describeFormat:@"%@ is not one of %@ %@", class, FBSimulatorEventClassStringComposite, FBSimulatorEventClassStringTouch]
+    describeFormat:@"%@ is not one of %@ %@", class, EventClassStringComposite, EventClassStringTouch]
     fail:error];
 }
 
@@ -592,27 +591,27 @@ static NSString *const FBSimulatorHIDEventKeyKeycode = @"keycode";
   return self;
 }
 
-static NSString *const FBSimulatorEventTypeStringDown = @"down";
-static NSString *const FBSimulatorEventTypeStringUp = @"up";
+static NSString *const DirectionDown = @"down";
+static NSString *const DirectionUp = @"up";
 
-+ (FBSimulatorHIDEventType)eventTypeForEventTypeString:(NSString *)eventTypeString
++ (FBSimulatorHIDDirection)directionFromDirectionString:(NSString *)directionString
 {
-  if ([eventTypeString isEqualToString:FBSimulatorEventTypeStringDown]) {
-    return FBSimulatorHIDEventTypeDown;
+  if ([directionString isEqualToString:DirectionDown]) {
+    return FBSimulatorHIDDirectionDown;
   }
-  if ([eventTypeString isEqualToString:FBSimulatorEventTypeStringUp]) {
-    return FBSimulatorHIDEventTypeUp;
+  if ([directionString isEqualToString:DirectionUp]) {
+    return FBSimulatorHIDDirectionUp;
   }
   return 0;
 }
 
-+ (NSString *)eventTypeStringFromEventType:(FBSimulatorHIDEventType)eventType
++ (NSString *)directionStringFromDirection:(FBSimulatorHIDDirection)direction
 {
-  switch (eventType) {
-    case FBSimulatorHIDEventTypeDown:
-      return FBSimulatorEventTypeStringDown;
-    case FBSimulatorHIDEventTypeUp:
-      return FBSimulatorEventTypeStringUp;
+  switch (direction) {
+    case FBSimulatorHIDDirectionDown:
+      return DirectionDown;
+    case FBSimulatorHIDDirectionUp:
+      return DirectionUp;
     default:
       return nil;
   }

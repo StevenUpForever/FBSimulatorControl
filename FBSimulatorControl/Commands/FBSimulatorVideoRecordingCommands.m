@@ -11,8 +11,6 @@
 
 #import "FBSimulator.h"
 #import "FBSimulatorError.h"
-#import "FBSimulator+Connection.h"
-#import "FBSimulator+Framebuffer.h"
 #import "FBFramebuffer.h"
 #import "FBSimulatorVideo.h"
 #import "FBFramebufferSurface.h"
@@ -71,17 +69,22 @@ FBTerminationHandleType const FBTerminationTypeHandleVideoStreaming = @"VideoStr
 
 #pragma mark FBSimulatorStreamingCommands
 
-- (nullable FBSimulatorBitmapStream *)createStreamWithType:(FBBitmapStreamType)type error:(NSError **)error
+- (nullable FBSimulatorBitmapStream *)createStreamWithConfiguration:(FBBitmapStreamConfiguration *)configuration error:(NSError **)error
 {
-  if (type != FBBitmapStreamTypeBGRA) {
+  if (![configuration.encoding isEqualToString:FBBitmapStreamEncodingBGRA]) {
     return [FBSimulatorError failWithErrorMessage:@"Only BGRA is supported for simulators." errorOut:error];
   }
 
   FBFramebufferSurface *surface = [self obtainSurfaceWithError:error];
+  id<FBControlCoreLogger> logger = self.simulator.logger;
   if (!surface) {
     return nil;
   }
-  return [FBSimulatorBitmapStream lazyStreamWithSurface:surface logger:self.simulator.logger];
+  NSNumber *framesPerSecond = configuration.framesPerSecond;
+  if (framesPerSecond) {
+    return [FBSimulatorBitmapStream eagerStreamWithSurface:surface framesPerSecond:framesPerSecond.unsignedIntegerValue logger:logger];
+  }
+  return [FBSimulatorBitmapStream lazyStreamWithSurface:surface logger:logger];
 }
 
 #pragma mark Private
